@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	. "github.com/achannarasappa/ticker/v5/internal/ui/component/watchlist"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	. "github.com/alexso/ticker-vim/v5/internal/ui/component/watchlist"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -36,7 +36,7 @@ var _ = Describe("Watchlist", func() {
 	It("should render a watchlist", func() {
 		m := NewModel(Config{
 			Styles:                stylesFixture,
-			ShowPositions:          true,
+			ShowPositions:         true,
 			ExtraInfoExchange:     true,
 			ExtraInfoFundamentals: true,
 			Sort:                  "alpha",
@@ -136,9 +136,9 @@ var _ = Describe("Watchlist", func() {
 	When("an unknown update message is received", func() {
 		It("should ignore the message", func() {
 			m := NewModel(Config{
-				Styles:       stylesFixture,
+				Styles:        stylesFixture,
 				ShowPositions: false,
-				Sort:         "alpha",
+				Sort:          "alpha",
 			})
 
 			// Initial state
@@ -163,6 +163,46 @@ var _ = Describe("Watchlist", func() {
 
 			// View should remain unchanged
 			Expect(removeFormatting(m.View())).To(Equal(removeFormatting(initialView)))
+		})
+	})
+
+	When("a filter is applied", func() {
+		It("fuzzy matches symbols and company names case-insensitively", func() {
+			m := NewModel(Config{Styles: stylesFixture, Sort: "user"})
+			m, _ = m.Update(SetAssetsMsg([]c.Asset{
+				{Symbol: "BOL.ST", Name: "Boliden AB"},
+				{Symbol: "ERIC-B.ST", Name: "Telefonaktiebolaget LM Ericsson"},
+				{Symbol: "NVDA", Name: "NVIDIA Corporation"},
+			}))
+
+			m, _ = m.Update(ChangeFilterMsg("bldn"))
+			view := removeFormatting(m.View())
+			Expect(view).To(ContainSubstring("BOL.ST"))
+			Expect(view).NotTo(ContainSubstring("ERIC-B.ST"))
+			Expect(view).NotTo(ContainSubstring("NVDA"))
+
+			m, _ = m.Update(ChangeFilterMsg("telefon"))
+			view = removeFormatting(m.View())
+			Expect(view).To(ContainSubstring("ERIC-B.ST"))
+			Expect(view).NotTo(ContainSubstring("BOL.ST"))
+		})
+
+		It("shows a clear empty state and restores all symbols when cleared", func() {
+			m := NewModel(Config{Styles: stylesFixture})
+			m, _ = m.Update(SetAssetsMsg([]c.Asset{{Symbol: "BOL.ST", Name: "Boliden AB"}}))
+			m, _ = m.Update(ChangeFilterMsg("missing"))
+			Expect(removeFormatting(m.View())).To(Equal("No symbols match /missing"))
+
+			m, _ = m.Update(ChangeFilterMsg(""))
+			Expect(removeFormatting(m.View())).To(ContainSubstring("BOL.ST"))
+		})
+
+		It("preserves visible assets across quote refreshes", func() {
+			m := NewModel(Config{Styles: stylesFixture})
+			assets := SetAssetsMsg([]c.Asset{{Symbol: "BOL.ST", Name: "Boliden AB"}})
+			m, _ = m.Update(assets)
+			m, _ = m.Update(assets)
+			Expect(removeFormatting(m.View())).To(ContainSubstring("BOL.ST"))
 		})
 	})
 
@@ -517,7 +557,7 @@ var _ = Describe("Watchlist", func() {
 	When("the option for extra holding information is set", func() {
 		It("should render extra holding information", func() {
 			m := NewModel(Config{
-				Styles:       stylesFixture,
+				Styles:        stylesFixture,
 				ShowPositions: true,
 			})
 			m.Update(tea.WindowSizeMsg{Width: 120})
@@ -553,7 +593,7 @@ var _ = Describe("Watchlist", func() {
 		When("the holding quantity is high", func() {
 			It("should render extra holding information without truncation", func() {
 				m := NewModel(Config{
-					Styles:       stylesFixture,
+					Styles:        stylesFixture,
 					ShowPositions: true,
 				})
 				m.Update(tea.WindowSizeMsg{Width: 120})
@@ -590,7 +630,7 @@ var _ = Describe("Watchlist", func() {
 		When("there is no position", func() {
 			It("should not render quantity or average cost", func() {
 				m := NewModel(Config{
-					Styles:       stylesFixture,
+					Styles:        stylesFixture,
 					ShowPositions: true,
 				})
 				m.Update(tea.WindowSizeMsg{Width: 120})
@@ -647,7 +687,7 @@ var _ = Describe("Watchlist", func() {
 		It("should return nil command", func() {
 			m := NewModel(Config{
 				Styles:                stylesFixture,
-				ShowPositions:          false,
+				ShowPositions:         false,
 				ExtraInfoExchange:     false,
 				ExtraInfoFundamentals: false,
 				Sort:                  "alpha",

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/achannarasappa/ticker/v5/internal/cache"
-	"github.com/achannarasappa/ticker/v5/internal/cli/symbol"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	"github.com/achannarasappa/ticker/v5/internal/ui/util"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
+	"github.com/alexso/ticker-vim/v5/internal/cli/symbol"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/ui/util"
 
 	"github.com/adrg/xdg"
 	"github.com/mitchellh/go-homedir"
@@ -122,7 +122,7 @@ func GetDependencies() c.Dependencies {
 	return c.Dependencies{
 		Fs:                               afero.NewOsFs(),
 		SymbolsURL:                       "https://raw.githubusercontent.com/achannarasappa/ticker-static/master/symbols.csv",
-		GitHubReleasesURL:                "https://api.github.com/repos/achannarasappa/ticker/releases/latest",
+		GitHubReleasesURL:                "https://api.github.com/repos/alexso/ticker-vim/releases/latest",
 		MonitorYahooBaseURL:              "https://query1.finance.yahoo.com",
 		MonitorYahooSessionRootURL:       "https://finance.yahoo.com",
 		MonitorYahooSessionCrumbURL:      "https://query2.finance.yahoo.com",

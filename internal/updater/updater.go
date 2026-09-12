@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/achannarasappa/ticker/v5/internal/cache"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
 	"github.com/spf13/afero"
 )
 

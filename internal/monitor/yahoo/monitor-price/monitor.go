@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	poller "github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/monitor-price/poller"
-	unary "github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	poller "github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/monitor-price/poller"
+	unary "github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	"github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 )
 
 const (

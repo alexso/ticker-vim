@@ -1,7 +1,7 @@
 package unary_test
 
 import (
-	"github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 )
 
 var (

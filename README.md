@@ -1,13 +1,11 @@
 <p>
-    <a href="https://github.com/achannarasappa/ticker/releases"><img src="https://img.shields.io/github/v/release/achannarasappa/ticker" alt="Latest Release"></a>
-    <a href="https://github.com/achannarasappa/ticker/actions"><img src="https://github.com/achannarasappa/ticker/workflows/test/badge.svg" alt="Build Status"></a>
-    <a href='https://coveralls.io/github/achannarasappa/ticker?branch=master'><img src='https://coveralls.io/repos/github/achannarasappa/ticker/badge.svg?branch=master' alt='Coverage Status' /></a>
-    <a href='https://goreportcard.com/badge/github.com/achannarasappa/ticker'><img src='https://goreportcard.com/badge/github.com/achannarasappa/ticker' alt='Report Card' /></a>
+    <a href="https://github.com/alexso/ticker-vim/releases"><img src="https://img.shields.io/github/v/release/alexso/ticker-vim" alt="Latest Release"></a>
+    <a href="https://github.com/alexso/ticker-vim/actions"><img src="https://github.com/alexso/ticker-vim/actions/workflows/test.yml/badge.svg" alt="Build Status"></a>
 </p>
 
-<h1 align="center">Ticker</h2>
+<h1 align="center">ticker-vim</h1>
 <p align="center">
-Terminal stock & crypto price watcher and position tracker
+Ticker with Vim navigation, fuzzy filtering, and visible watchlist groups
 </p>
 <p align="center">
 <img align="center" src="./docs/ticker.gif" />
@@ -15,6 +13,10 @@ Terminal stock & crypto price watcher and position tracker
 
 ## Features
 
+* Vim-style navigation with `j`, `k`, `g`, and `G`
+* Switch groups with `h`, `l`, `Tab`, or `Shift-Tab`
+* Fuzzy-filter symbols and company names with `/`
+* Visible group tabs in the footer
 * Live stock & crypto price quotes
 * Track value of your stock positions
 * Support for multiple cost basis lots
@@ -22,57 +24,41 @@ Terminal stock & crypto price watcher and position tracker
 
 ## Install
 
-Download the pre-compiled binaries from the [releases page](https://github.com/achannarasappa/ticker/releases) and copy to a location in `PATH` or see quick installs below
+Install with Homebrew:
 
-**homebrew**
-```
-brew install achannarasappa/tap/ticker
-```
-
-**linux**
 ```sh
-curl -Ls https://api.github.com/repos/achannarasappa/ticker/releases/latest \
-| grep -wo "https.*linux-amd64*.tar.gz" \
-| wget -qi - \
-&& tar -xvf ticker*.tar.gz ticker \
-&& chmod +x ./ticker \
-&& sudo mv ticker /usr/local/bin/
+brew install alexso/tap/ticker-vim
 ```
 
-**windows**
-```
-winget install -e --id achannarasappa.ticker
-```
+Apple Silicon and Intel macOS archives are also available from the
+[releases page](https://github.com/alexso/ticker-vim/releases).
 
-**docker**
-```sh
-docker run -it --rm achannarasappa/ticker
-```
-
-Note: config file can be mounted from the host machine by using a bind mount with `-v ~/.ticker.yaml:/.ticker.yaml`
-
-**snap**
-```sh
-sudo snap install ticker
-sudo snap connect ticker:ticker-config
-```
-
-Note: config file will need to be set with `--config $HOME/ticker.yaml` since Snap does not allow access to dotfiles
-
-### Third-party repositories
-These repositories are maintained by a third-party and may not have the latest versions available
-
-**MacPorts**
-```
-sudo port selfupdate
-sudo port install ticker
-```
+`ticker-vim` remains compatible with Ticker configuration files, including
+`~/.config/ticker/.ticker.yaml` when supplied with `--config`.
 
 ## Quick Start
 
 ```sh
-ticker -w NET,AAPL,TSLA
+ticker-vim -w NET,AAPL,TSLA
 ```
+
+## Keyboard shortcuts
+
+|Key|Action|
+|---|---|
+|`j` / `k`|Scroll down / up|
+|`g` / `G`|Jump to top / bottom|
+|`h` / `l`|Previous / next group|
+|`Tab` / `Shift-Tab`|Next / previous group|
+|`/`|Start fuzzy filtering|
+|`Enter`|Keep the current filter|
+|`Esc`|Clear the filter|
+|`q`|Quit|
+
+## About this fork
+
+This project is a fork of [Ticker](https://github.com/achannarasappa/ticker),
+created by Achanna Rasappa and contributors. It remains licensed under GPL-3.0.
 
 ## Usage
 |Option Name|Alias|Flag|Default|Description|

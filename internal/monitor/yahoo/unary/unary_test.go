@@ -1,9 +1,9 @@
 package unary_test
 
 import (
-	"github.com/achannarasappa/ticker/v5/internal/cache"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	"github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 	. "github.com/onsi/ginkgo/v2"
 	g "github.com/onsi/gomega/gstruct"
 

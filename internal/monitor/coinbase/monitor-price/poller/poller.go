@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	"github.com/achannarasappa/ticker/v5/internal/monitor/coinbase/unary"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/coinbase/unary"
 )
 
 type Poller struct {

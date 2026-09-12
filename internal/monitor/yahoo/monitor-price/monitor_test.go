@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/achannarasappa/ticker/v5/internal/cache"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	monitorPriceYahoo "github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/monitor-price"
-	"github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	monitorPriceYahoo "github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/monitor-price"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 
 	"github.com/onsi/gomega/ghttp"
 	"github.com/spf13/afero"

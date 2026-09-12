@@ -2,19 +2,20 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	grid "github.com/achannarasappa/term-grid"
-	"github.com/achannarasappa/ticker/v5/internal/asset"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	mon "github.com/achannarasappa/ticker/v5/internal/monitor"
-	"github.com/achannarasappa/ticker/v5/internal/ui/component/summary"
-	"github.com/achannarasappa/ticker/v5/internal/ui/component/watchlist"
-	"github.com/achannarasappa/ticker/v5/internal/ui/component/watchlist/row"
-	"github.com/achannarasappa/ticker/v5/internal/updater"
+	"github.com/alexso/ticker-vim/v5/internal/asset"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	mon "github.com/alexso/ticker-vim/v5/internal/monitor"
+	"github.com/alexso/ticker-vim/v5/internal/ui/component/summary"
+	"github.com/alexso/ticker-vim/v5/internal/ui/component/watchlist"
+	"github.com/alexso/ticker-vim/v5/internal/ui/component/watchlist/row"
+	"github.com/alexso/ticker-vim/v5/internal/updater"
 
-	util "github.com/achannarasappa/ticker/v5/internal/ui/util"
+	util "github.com/alexso/ticker-vim/v5/internal/ui/util"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,9 +24,10 @@ import (
 
 //nolint:gochecknoglobals
 var (
-	styleLogo  = util.NewStyle("#ffffd7", "#ff8700", true)
-	styleGroup = util.NewStyle("#8a8a8a", "#303030", false)
-	styleHelp  = util.NewStyle("#4e4e4e", "", true)
+	styleLogo          = util.NewStyle("#ffffd7", "#ff8700", true)
+	styleGroup         = util.NewStyle("#8a8a8a", "#303030", false)
+	styleGroupSelected = util.NewStyle("#ffffd7", "#5f5f5f", true)
+	styleHelp          = util.NewStyle("#4e4e4e", "", true)
 )
 
 const (
@@ -49,8 +51,9 @@ type Model struct {
 	lastUpdateTime     string
 	groupSelectedIndex int
 	groupMaxIndex      int
-	groupSelectedName  string
 	currentSort        string
+	filterActive       bool
+	filterQuery        string
 	monitors           *mon.Monitor
 	mu                 sync.RWMutex
 	version            string
@@ -104,7 +107,6 @@ func NewModel(dep c.Dependencies, ctx c.Context, monitors *mon.Monitor, version 
 		summary:            summary.NewModel(ctx),
 		groupMaxIndex:      groupMaxIndex,
 		groupSelectedIndex: 0,
-		groupSelectedName:  "       ",
 		currentSort:        ctx.Config.Sort,
 		monitors:           monitors,
 		version:            version,
@@ -143,42 +145,71 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
+		if m.filterActive {
+			switch msg.String() {
+			case "ctrl+c":
+				return m, tea.Quit
+			case "esc":
+				m.filterActive = false
+				m.filterQuery = ""
+
+				return m.applyFilter()
+			case "enter":
+				m.filterActive = false
+
+				return m, nil
+			case "backspace", "ctrl+h":
+				query := []rune(m.filterQuery)
+				if len(query) > 0 {
+					m.filterQuery = string(query[:len(query)-1])
+				}
+
+				return m.applyFilter()
+			default:
+				if len(msg.Runes) > 0 {
+					m.filterQuery += string(msg.Runes)
+
+					return m.applyFilter()
+				}
+
+				return m, nil
+			}
+		}
+
 		switch msg.String() {
 
-		case "tab", "shift+tab":
-			m.mu.Lock()
-
-			groupSelectedCursor := -1
-			if msg.String() == "tab" {
-				groupSelectedCursor = 1
-			}
-
-			m.groupSelectedIndex = (m.groupSelectedIndex + groupSelectedCursor + m.groupMaxIndex + 1) % (m.groupMaxIndex + 1)
-
-			// Invalidate all previous ticks, incremental price updates, and full price updates
-			m.versionVector++
-
-			m.mu.Unlock()
-
-			// Set the new set of symbols in the monitors and initiate a request to refresh all price quotes
-			// Eventually, SetAssetGroupQuoteMsg message will be sent with the new quotes once all of the HTTP request complete
-			m.monitors.SetAssetGroup(m.ctx.Groups[m.groupSelectedIndex], m.versionVector) //nolint:errcheck
-
-			return m, tickImmediate(m.versionVector)
+		case "tab", "l":
+			return m.changeGroup(1)
+		case "shift+tab", "h":
+			return m.changeGroup(-1)
 		case "ctrl+c":
-			fallthrough
-		case "esc":
 			fallthrough
 		case "q":
 			return m, tea.Quit
-		case "up":
-			m.viewport, cmd = m.viewport.Update(msg)
+		case "esc":
+			if m.filterQuery != "" {
+				m.filterQuery = ""
 
-			return m, cmd
-		case "down":
-			m.viewport, cmd = m.viewport.Update(msg)
+				return m.applyFilter()
+			}
 
-			return m, cmd
+			return m, tea.Quit
+		case "up", "k":
+			m.viewport.LineUp(1)
+
+			return m, nil
+		case "down", "j":
+			m.viewport.LineDown(1)
+
+			return m, nil
+		case "g":
+			m.viewport.GotoTop()
+
+			return m, nil
+		case "G":
+			m.viewport.GotoBottom()
+
+			return m, nil
 		case "pgup":
 			m.viewport.PageUp()
 
@@ -211,6 +242,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx
 			m.watchlist, cmd = m.watchlist.Update(watchlist.ChangeSortMsg(m.currentSort))
 
 			return m, cmd
+		case "/":
+			m.filterActive = true
+
+			return m, nil
 
 		}
 
@@ -289,8 +324,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx
 		for i, assetQuote := range m.assetQuotes {
 			m.assetQuotesLookup[assetQuote.Symbol] = i
 		}
-
-		m.groupSelectedName = m.ctx.Groups[m.groupSelectedIndex].Name
 
 		return m, nil
 
@@ -378,18 +411,14 @@ func (m *Model) View() string {
 
 	return viewSummary +
 		m.viewport.View() + "\n" +
-		footer(m.viewport.Width, m.lastUpdateTime, m.groupSelectedName, m.currentSort, m.latestVersion)
+		footer(m.viewport.Width, m.lastUpdateTime, m.ctx.Groups, m.groupSelectedIndex, m.currentSort, m.latestVersion, m.filterQuery, m.filterActive)
 
 }
 
-func footer(width int, time string, groupSelectedName string, currentSort string, latestVersion string) string {
+func footer(width int, time string, groups []c.AssetGroup, groupSelectedIndex int, currentSort string, latestVersion string, filterQuery string, filterActive bool) string {
 
 	if width < 80 {
 		return styleLogo(" ticker ")
-	}
-
-	if len(groupSelectedName) > 12 {
-		groupSelectedName = groupSelectedName[:12]
 	}
 
 	// Get display name for current sort
@@ -403,8 +432,15 @@ func footer(width int, time string, groupSelectedName string, currentSort string
 		sortDisplayName = "user"
 	}
 
-	baseHelpText := " q: exit ↑: scroll up ↓: scroll down ⭾: change group"
+	baseHelpText := " q:exit j/k:scroll g/G:top/bottom /:filter h/l:group"
 	sortHelpText := " s: change sort (" + sortDisplayName + ")"
+	filterText := ""
+	if filterActive || filterQuery != "" {
+		filterText = " /" + filterQuery
+		if filterActive {
+			filterText += "▏"
+		}
+	}
 
 	rightText := "↻  " + time
 	if latestVersion != "" {
@@ -414,7 +450,8 @@ func footer(width int, time string, groupSelectedName string, currentSort string
 	// Calculate minimum width for sort help text to appear
 	// Longest sort text is "s: change sort (change)" = 24 characters
 	// Minimum width needed: logo(8) + max group(14) + base help(52) + sort help(24) + time(12) = 110
-	const sortHelpMinWidth = 114
+	const sortHelpMinWidth = 130
+	groupText, groupWidth := renderGroupTabs(groups, groupSelectedIndex)
 
 	return grid.Render(grid.Grid{
 		Rows: []grid.Row{
@@ -422,8 +459,9 @@ func footer(width int, time string, groupSelectedName string, currentSort string
 				Width: width,
 				Cells: []grid.Cell{
 					{Text: styleLogo(" ticker "), Width: 8},
-					{Text: styleGroup(" " + groupSelectedName + " "), Width: len(groupSelectedName) + 2, VisibleMinWidth: 95},
-					{Text: styleHelp(baseHelpText), Width: 52},
+					{Text: groupText, Width: groupWidth, VisibleMinWidth: 80},
+					{Text: styleHelp(filterText), Width: len(filterText), VisibleMinWidth: 80},
+					{Text: styleHelp(baseHelpText), Width: len(baseHelpText), VisibleMinWidth: 105},
 					{Text: styleHelp(sortHelpText), Width: len(sortHelpText), VisibleMinWidth: sortHelpMinWidth},
 					{Text: styleHelp(rightText), Align: grid.Right},
 				},
@@ -431,6 +469,53 @@ func footer(width int, time string, groupSelectedName string, currentSort string
 		},
 	})
 
+}
+
+func renderGroupTabs(groups []c.AssetGroup, selectedIndex int) (string, int) {
+	var tabs strings.Builder
+	width := 0
+	for i, group := range groups {
+		name := group.Name
+		if name == "" {
+			name = "default"
+		}
+		text := " " + name + " "
+		if i == selectedIndex {
+			tabs.WriteString(styleGroupSelected(text))
+		} else {
+			tabs.WriteString(styleGroup(text))
+		}
+		width += len(name) + 2
+	}
+
+	return tabs.String(), width
+}
+
+func (m *Model) applyFilter() (*Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.watchlist, cmd = m.watchlist.Update(watchlist.ChangeFilterMsg(m.filterQuery))
+	m.viewport.GotoTop()
+
+	return m, cmd
+}
+
+func (m *Model) changeGroup(cursor int) (*Model, tea.Cmd) {
+	m.mu.Lock()
+	m.groupSelectedIndex = (m.groupSelectedIndex + cursor + m.groupMaxIndex + 1) % (m.groupMaxIndex + 1)
+	m.versionVector++
+	m.filterActive = false
+	m.filterQuery = ""
+	m.watchlist, _ = m.watchlist.Update(watchlist.ChangeFilterMsg(""))
+	m.viewport.GotoTop()
+	versionVector := m.versionVector
+	group := m.ctx.Groups[m.groupSelectedIndex]
+	m.mu.Unlock()
+
+	// Set the new symbols and request a refresh. The resulting quotes are versioned,
+	// so late responses from the previous group are safely ignored.
+	m.monitors.SetAssetGroup(group, versionVector) //nolint:errcheck
+
+	return m, tickImmediate(versionVector)
 }
 
 func getVerticalMargin(config c.Config) int {

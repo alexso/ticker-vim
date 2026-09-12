@@ -1,4 +1,4 @@
-module github.com/achannarasappa/ticker/v5
+module github.com/alexso/ticker-vim/v5
 
 go 1.26.4
 

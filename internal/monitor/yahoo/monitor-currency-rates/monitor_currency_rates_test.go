@@ -10,10 +10,10 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/spf13/afero"
 
-	"github.com/achannarasappa/ticker/v5/internal/cache"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	. "github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/monitor-currency-rates"
-	"github.com/achannarasappa/ticker/v5/internal/monitor/yahoo/unary"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	. "github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/monitor-currency-rates"
+	"github.com/alexso/ticker-vim/v5/internal/monitor/yahoo/unary"
 )
 
 var _ = Describe("MonitorCurrencyRates", func() {

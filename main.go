@@ -1,6 +1,6 @@
 package main
 
-import "github.com/achannarasappa/ticker/v5/cmd"
+import "github.com/alexso/ticker-vim/v5/cmd"
 
 func main() {
 	cmd.Execute()

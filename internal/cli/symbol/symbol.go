@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	c "github.com/achannarasappa/ticker/v5/internal/common"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
 )
 
 // ttlSymbolMap is how long the symbol source map is cached. It is sourced from a

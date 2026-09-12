@@ -1,7 +1,7 @@
 package asset_test
 
 import (
-	c "github.com/achannarasappa/ticker/v5/internal/common"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
 )
 
 var fixtureAssetGroupQuote = c.AssetGroupQuote{

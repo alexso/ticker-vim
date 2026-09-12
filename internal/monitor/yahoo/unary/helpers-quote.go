@@ -1,7 +1,7 @@
 package unary
 
 import (
-	c "github.com/achannarasappa/ticker/v5/internal/common"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
 )
 
 //nolint:gochecknoglobals

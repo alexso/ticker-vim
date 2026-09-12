@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/achannarasappa/ticker/v5/internal/cli"
-	c "github.com/achannarasappa/ticker/v5/internal/common"
-	"github.com/achannarasappa/ticker/v5/internal/print"
-	"github.com/achannarasappa/ticker/v5/internal/ui"
+	"github.com/alexso/ticker-vim/v5/internal/cli"
+	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/print"
+	"github.com/alexso/ticker-vim/v5/internal/ui"
 )
 
 //nolint:gochecknoglobals
@@ -25,8 +25,8 @@ var (
 	err          error
 	rootCmd      = &cobra.Command{
 		Version: Version,
-		Use:     "ticker",
-		Short:   "Terminal stock ticker and stock gain/loss tracker",
+		Use:     "ticker-vim",
+		Short:   "Terminal stock ticker with Vim navigation and fuzzy filtering",
 		PreRun:  initContext,
 		Args:    cli.Validate(&config, &options, &err),
 		Run:     cli.Run(ui.Start(&dep, &ctx, Version)),

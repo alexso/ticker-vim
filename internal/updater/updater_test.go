@@ -9,8 +9,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/spf13/afero"
 
-	"github.com/achannarasappa/ticker/v5/internal/cache"
-	"github.com/achannarasappa/ticker/v5/internal/updater"
+	"github.com/alexso/ticker-vim/v5/internal/cache"
+	"github.com/alexso/ticker-vim/v5/internal/updater"
 )
 
 const (
