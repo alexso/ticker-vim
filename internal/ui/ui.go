@@ -139,7 +139,7 @@ func (m *Model) Init() tea.Cmd {
 }
 
 // Update hook for bubbletea
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx,gocyclo
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -195,11 +195,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx
 
 			return m, tea.Quit
 		case "up", "k":
-			m.viewport.LineUp(1)
+			m.viewport.ScrollUp(1)
 
 			return m, nil
 		case "down", "j":
-			m.viewport.LineDown(1)
+			m.viewport.ScrollDown(1)
 
 			return m, nil
 		case "g":

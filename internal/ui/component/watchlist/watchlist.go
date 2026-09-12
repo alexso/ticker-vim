@@ -206,7 +206,7 @@ func (m *Model) View() string {
 		return fmt.Sprintf("Terminal window too narrow to render content\nResize to fix (%d/80)", m.width)
 	}
 	if len(m.rows) == 0 && m.filter != "" {
-		return fmt.Sprintf("No symbols match /%s", m.filter)
+		return "No symbols match /" + m.filter
 	}
 
 	rows := make([]string, 0)
