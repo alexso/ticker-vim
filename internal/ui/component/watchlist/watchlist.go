@@ -2,6 +2,7 @@ package watchlist
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	c "github.com/alexso/ticker-vim/v5/internal/common"
@@ -10,7 +11,12 @@ import (
 	u "github.com/alexso/ticker-vim/v5/internal/ui/util"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+const selectedRowBackground = "\x1b[48;2;20;35;80m"
+
+var ansiStylePattern = regexp.MustCompile(`\x1b\[[0-9;]*m`) //nolint:gochecknoglobals
 
 // Config represents the configuration for the watchlist component
 type Config struct {
@@ -34,6 +40,7 @@ type Model struct {
 	rows           []*row.Model
 	rowsBySymbol   map[string]*row.Model
 	filter         string
+	selectedIndex  int
 }
 
 // Messages for replacing assets
@@ -47,6 +54,12 @@ type ChangeSortMsg string
 
 // ChangeFilterMsg updates the case-insensitive symbol/name filter.
 type ChangeFilterMsg string
+
+// MoveSelectionMsg moves the highlighted row by the supplied offset.
+type MoveSelectionMsg int
+
+// SetSelectionMsg selects an exact visible row index.
+type SetSelectionMsg int
 
 // NewModel returns a model with default values
 func NewModel(config Config) *Model {
@@ -86,6 +99,16 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.filter = string(msg)
 
 		return m.setVisibleAssets(m.filteredAssets())
+
+	case MoveSelectionMsg:
+		m.setSelectedIndex(m.selectedIndex + int(msg))
+
+		return m, nil
+
+	case SetSelectionMsg:
+		m.setSelectedIndex(int(msg))
+
+		return m, nil
 
 	case tea.WindowSizeMsg:
 
@@ -167,6 +190,7 @@ func (m *Model) setVisibleAssets(assets []*c.Asset) (*Model, tea.Cmd) {
 	m.assets = assets
 	m.assetsBySymbol = assetsBySymbol
 	m.rowsBySymbol = rowsBySymbol
+	m.setSelectedIndex(m.selectedIndex)
 	m.cellWidths = getCellWidths(m.assets)
 	for i, r := range m.rows {
 		m.rows[i], _ = r.Update(row.SetCellWidthsMsg{
@@ -176,6 +200,36 @@ func (m *Model) setVisibleAssets(assets []*c.Asset) (*Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) setSelectedIndex(index int) {
+	if len(m.rows) == 0 {
+		m.selectedIndex = 0
+
+		return
+	}
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(m.rows) {
+		index = len(m.rows) - 1
+	}
+	m.selectedIndex = index
+}
+
+// SelectedLineRange returns the first and last rendered lines of the selected row.
+func (m *Model) SelectedLineRange() (int, int, bool) {
+	if len(m.rows) == 0 {
+		return 0, 0, false
+	}
+
+	start := 0
+	for i := range m.selectedIndex {
+		start += strings.Count(m.rows[i].View(), "\n") + 1
+	}
+	height := strings.Count(m.rows[m.selectedIndex].View(), "\n") + 1
+
+	return start, start + height - 1, true
 }
 
 // fuzzyMatch performs a case-insensitive subsequence match. Empty queries match all assets.
@@ -210,12 +264,28 @@ func (m *Model) View() string {
 	}
 
 	rows := make([]string, 0)
-	for _, row := range m.rows {
-		rows = append(rows, row.View())
+	for i, row := range m.rows {
+		view := row.View()
+		if i == m.selectedIndex {
+			view = highlightRow(view, m.width)
+		}
+		rows = append(rows, view)
 	}
 
 	return strings.Join(rows, "\n")
 
+}
+
+func highlightRow(view string, width int) string {
+	padded := lipgloss.NewStyle().Width(width).Render(view)
+	// Text, tags, and animated prices contain their own ANSI resets and backgrounds.
+	// Reapply the selection background after every style sequence so the entire row
+	// remains one continuous highlighted surface.
+	highlighted := ansiStylePattern.ReplaceAllStringFunc(padded, func(style string) string {
+		return style + selectedRowBackground
+	})
+
+	return selectedRowBackground + highlighted + "\x1b[0m"
 }
 func getCellWidths(assets []*c.Asset) row.CellWidthsContainer {
 

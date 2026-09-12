@@ -195,18 +195,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx,goc
 
 			return m, tea.Quit
 		case "up", "k":
-			m.viewport.ScrollUp(1)
-
-			return m, nil
+			return m.moveSelection(-1)
 		case "down", "j":
-			m.viewport.ScrollDown(1)
-
-			return m, nil
+			return m.moveSelection(1)
 		case "g":
+			m.watchlist, _ = m.watchlist.Update(watchlist.SetSelectionMsg(0))
 			m.viewport.GotoTop()
 
 			return m, nil
 		case "G":
+			m.watchlist, _ = m.watchlist.Update(watchlist.SetSelectionMsg(int(^uint(0) >> 1)))
 			m.viewport.GotoBottom()
 
 			return m, nil
@@ -244,6 +242,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:maintidx,goc
 			return m, cmd
 		case "/":
 			m.filterActive = true
+
+			return m, nil
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			groupIndex := int(msg.Runes[0] - '1')
+			if groupIndex <= m.groupMaxIndex {
+				return m.changeGroupTo(groupIndex)
+			}
 
 			return m, nil
 
@@ -432,7 +437,7 @@ func footer(width int, time string, groups []c.AssetGroup, groupSelectedIndex in
 		sortDisplayName = "user"
 	}
 
-	baseHelpText := " q:exit j/k:scroll g/G:top/bottom /:filter h/l:group"
+	baseHelpText := " q:exit j/k:select g/G:first/last /:filter h/l or 1-9:group"
 	sortHelpText := " s: change sort (" + sortDisplayName + ")"
 	filterText := ""
 	if filterActive || filterQuery != "" {
@@ -479,13 +484,13 @@ func renderGroupTabs(groups []c.AssetGroup, selectedIndex int) (string, int) {
 		if name == "" {
 			name = "default"
 		}
-		text := " " + name + " "
+		text := fmt.Sprintf(" %d %s ", i+1, name)
 		if i == selectedIndex {
 			tabs.WriteString(styleGroupSelected(text))
 		} else {
 			tabs.WriteString(styleGroup(text))
 		}
-		width += len(name) + 2
+		width += len(name) + 4
 	}
 
 	return tabs.String(), width
@@ -494,18 +499,26 @@ func renderGroupTabs(groups []c.AssetGroup, selectedIndex int) (string, int) {
 func (m *Model) applyFilter() (*Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.watchlist, cmd = m.watchlist.Update(watchlist.ChangeFilterMsg(m.filterQuery))
+	m.watchlist, _ = m.watchlist.Update(watchlist.SetSelectionMsg(0))
 	m.viewport.GotoTop()
 
 	return m, cmd
 }
 
 func (m *Model) changeGroup(cursor int) (*Model, tea.Cmd) {
+	groupIndex := (m.groupSelectedIndex + cursor + m.groupMaxIndex + 1) % (m.groupMaxIndex + 1)
+
+	return m.changeGroupTo(groupIndex)
+}
+
+func (m *Model) changeGroupTo(groupIndex int) (*Model, tea.Cmd) {
 	m.mu.Lock()
-	m.groupSelectedIndex = (m.groupSelectedIndex + cursor + m.groupMaxIndex + 1) % (m.groupMaxIndex + 1)
+	m.groupSelectedIndex = groupIndex
 	m.versionVector++
 	m.filterActive = false
 	m.filterQuery = ""
 	m.watchlist, _ = m.watchlist.Update(watchlist.ChangeFilterMsg(""))
+	m.watchlist, _ = m.watchlist.Update(watchlist.SetSelectionMsg(0))
 	m.viewport.GotoTop()
 	versionVector := m.versionVector
 	group := m.ctx.Groups[m.groupSelectedIndex]
@@ -516,6 +529,22 @@ func (m *Model) changeGroup(cursor int) (*Model, tea.Cmd) {
 	m.monitors.SetAssetGroup(group, versionVector) //nolint:errcheck
 
 	return m, tickImmediate(versionVector)
+}
+
+func (m *Model) moveSelection(offset int) (*Model, tea.Cmd) {
+	m.watchlist, _ = m.watchlist.Update(watchlist.MoveSelectionMsg(offset))
+	start, end, ok := m.watchlist.SelectedLineRange()
+	if !ok {
+		return m, nil
+	}
+
+	if start < m.viewport.YOffset {
+		m.viewport.SetYOffset(start)
+	} else if end >= m.viewport.YOffset+m.viewport.Height {
+		m.viewport.SetYOffset(end - m.viewport.Height + 1)
+	}
+
+	return m, nil
 }
 
 func getVerticalMargin(config c.Config) int {

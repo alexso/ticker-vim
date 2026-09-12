@@ -206,6 +206,31 @@ var _ = Describe("Watchlist", func() {
 		})
 	})
 
+	When("the selection moves", func() {
+		It("highlights one row and clamps movement to the visible rows", func() {
+			m := NewModel(Config{Styles: stylesFixture, Sort: "user"})
+			m, _ = m.Update(SetAssetsMsg([]c.Asset{
+				{Symbol: "ONE", Name: "First"},
+				{Symbol: "TWO", Name: "Second"},
+				{Symbol: "THREE", Name: "Third"},
+			}))
+
+			start, end, ok := m.SelectedLineRange()
+			Expect(ok).To(BeTrue())
+			Expect([]int{start, end}).To(Equal([]int{0, 1}))
+
+			m, _ = m.Update(MoveSelectionMsg(1))
+			start, end, ok = m.SelectedLineRange()
+			Expect(ok).To(BeTrue())
+			Expect([]int{start, end}).To(Equal([]int{2, 3}))
+
+			m, _ = m.Update(SetSelectionMsg(999))
+			start, end, ok = m.SelectedLineRange()
+			Expect(ok).To(BeTrue())
+			Expect([]int{start, end}).To(Equal([]int{4, 5}))
+		})
+	})
+
 	When("there are more than one symbols on the watchlist", func() {
 
 		When("the show-separator layout flag is set", func() {

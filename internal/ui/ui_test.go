@@ -17,10 +17,10 @@ func TestRenderGroupTabs(t *testing.T) {
 	}
 
 	view, width := renderGroupTabs(groups, 1)
-	if got, want := stripansi.Strip(view), " Stockholm  USA  ETC "; got != want {
+	if got, want := stripansi.Strip(view), " 1 Stockholm  2 USA  3 ETC "; got != want {
 		t.Fatalf("group tabs = %q, want %q", got, want)
 	}
-	if got, want := width, len(" Stockholm  USA  ETC "); got != want {
+	if got, want := width, len(" 1 Stockholm  2 USA  3 ETC "); got != want {
 		t.Fatalf("group tab width = %d, want %d", got, want)
 	}
 }
