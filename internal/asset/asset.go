@@ -46,6 +46,10 @@ func GetAssets(ctx c.Context, assetGroupQuote c.AssetGroupQuote) ([]c.Asset, Pos
 	}
 
 	for _, assetQuote := range assetGroupQuote.AssetQuotes {
+		displayName := assetQuote.Name
+		if configuredName, ok := assetGroupQuote.AssetGroup.DisplayNames[strings.ToLower(assetQuote.Symbol)]; ok {
+			displayName = configuredName
+		}
 
 		currencyRateByUse := getCurrencyRateByUse(ctx, assetQuote.Class, assetQuote.Currency.FromCurrencyCode, assetQuote.Currency.ToCurrencyCode, assetQuote.Currency.Rate)
 
@@ -54,7 +58,7 @@ func GetAssets(ctx c.Context, assetGroupQuote c.AssetGroupQuote) ([]c.Asset, Pos
 		summaryValues = append(summaryValues, position.Value*currencyRateByUse.SummaryValue)
 
 		assets = append(assets, c.Asset{
-			Name:   assetQuote.Name,
+			Name:   displayName,
 			Symbol: assetQuote.Symbol,
 			Class:  assetQuote.Class,
 			Currency: c.Currency{

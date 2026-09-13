@@ -44,6 +44,7 @@ func transformResponseQuote(responseQuote ResponseQuote) c.AssetQuote {
 			State:                   c.ExchangeStateOpen,
 			IsActive:                true,
 			IsRegularTradingSession: true,
+			QuoteTime:               responseQuote.RegularMarketTime.Raw,
 		},
 		Meta: c.Meta{
 			IsVariablePrecision: isVariablePrecision,
@@ -73,6 +74,9 @@ func transformResponseQuote(responseQuote ResponseQuote) c.AssetQuote {
 		assetQuote.QuotePrice.Change = (responseQuote.PostMarketChange.Raw + responseQuote.RegularMarketChange.Raw)
 		assetQuote.QuotePrice.ChangePercent = responseQuote.PostMarketChangePercent.Raw + responseQuote.RegularMarketChangePercent.Raw
 		assetQuote.Exchange.IsRegularTradingSession = false
+		if responseQuote.PostMarketTime.Raw != 0 {
+			assetQuote.Exchange.QuoteTime = responseQuote.PostMarketTime.Raw
+		}
 
 		return assetQuote
 	}
@@ -82,6 +86,9 @@ func transformResponseQuote(responseQuote ResponseQuote) c.AssetQuote {
 		assetQuote.QuotePrice.Change = responseQuote.PreMarketChange.Raw
 		assetQuote.QuotePrice.ChangePercent = responseQuote.PreMarketChangePercent.Raw
 		assetQuote.Exchange.IsRegularTradingSession = false
+		if responseQuote.PreMarketTime.Raw != 0 {
+			assetQuote.Exchange.QuoteTime = responseQuote.PreMarketTime.Raw
+		}
 
 		return assetQuote
 	}
@@ -92,6 +99,9 @@ func transformResponseQuote(responseQuote ResponseQuote) c.AssetQuote {
 		assetQuote.QuotePrice.ChangePercent = responseQuote.PostMarketChangePercent.Raw + responseQuote.RegularMarketChangePercent.Raw
 		assetQuote.Exchange.IsActive = false
 		assetQuote.Exchange.IsRegularTradingSession = false
+		if responseQuote.PostMarketTime.Raw != 0 {
+			assetQuote.Exchange.QuoteTime = responseQuote.PostMarketTime.Raw
+		}
 
 		return assetQuote
 	}

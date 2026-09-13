@@ -128,7 +128,7 @@ func (u *UnaryAPI) GetAssetQuotes(symbols []string) ([]c.AssetQuote, map[string]
 		return []c.AssetQuote{}, make(map[string]*c.AssetQuote), nil
 	}
 
-	result, err := u.getQuotes(symbols, []string{"shortName", "regularMarketChange", "regularMarketChangePercent", "regularMarketPrice", "regularMarketPreviousClose", "regularMarketOpen", "regularMarketDayRange", "regularMarketDayHigh", "regularMarketDayLow", "regularMarketVolume", "postMarketChange", "postMarketChangePercent", "postMarketPrice", "preMarketChange", "preMarketChangePercent", "preMarketPrice", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "marketCap"})
+	result, err := u.getQuotes(symbols, []string{"shortName", "regularMarketChange", "regularMarketChangePercent", "regularMarketPrice", "regularMarketPreviousClose", "regularMarketOpen", "regularMarketDayRange", "regularMarketDayHigh", "regularMarketDayLow", "regularMarketVolume", "regularMarketTime", "postMarketChange", "postMarketChangePercent", "postMarketPrice", "postMarketTime", "preMarketChange", "preMarketChangePercent", "preMarketPrice", "preMarketTime", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "marketCap"})
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get quotes: %w", err)

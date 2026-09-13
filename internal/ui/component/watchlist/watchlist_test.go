@@ -229,6 +229,26 @@ var _ = Describe("Watchlist", func() {
 			Expect(ok).To(BeTrue())
 			Expect([]int{start, end}).To(Equal([]int{4, 5}))
 		})
+
+		It("moves approximately one rendered page and exposes the selected asset", func() {
+			m := NewModel(Config{Styles: stylesFixture, Sort: "user"})
+			m, _ = m.Update(SetAssetsMsg([]c.Asset{
+				{Symbol: "ONE", Name: "First"},
+				{Symbol: "TWO", Name: "Second"},
+				{Symbol: "THREE", Name: "Third"},
+				{Symbol: "FOUR", Name: "Fourth"},
+			}))
+
+			m, _ = m.Update(MoveSelectionPageMsg{Direction: 1, Height: 4})
+			selected, ok := m.SelectedAsset()
+			Expect(ok).To(BeTrue())
+			Expect(selected.Symbol).To(Equal("THREE"))
+
+			m, _ = m.Update(MoveSelectionPageMsg{Direction: -1, Height: 4})
+			selected, ok = m.SelectedAsset()
+			Expect(ok).To(BeTrue())
+			Expect(selected.Symbol).To(Equal("ONE"))
+		})
 	})
 
 	When("there are more than one symbols on the watchlist", func() {

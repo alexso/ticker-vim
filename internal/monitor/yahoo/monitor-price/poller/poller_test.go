@@ -31,7 +31,7 @@ var _ = Describe("Poller", func() {
 
 		server.RouteToHandler("GET", "/v7/finance/quote",
 			ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v7/finance/quote", "symbols=NET&fields=shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,postMarketChange,postMarketChangePercent,postMarketPrice,preMarketChange,preMarketChangePercent,preMarketPrice,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap&formatted=true&lang=en-US&region=US&corsDomain=finance.yahoo.com"),
+				ghttp.VerifyRequest("GET", "/v7/finance/quote", "symbols=NET&fields=shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketTime,postMarketChange,postMarketChangePercent,postMarketPrice,postMarketTime,preMarketChange,preMarketChangePercent,preMarketPrice,preMarketTime,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap&formatted=true&lang=en-US&region=US&corsDomain=finance.yahoo.com"),
 				ghttp.RespondWithJSONEncoded(http.StatusOK, responseQuote1Fixture),
 			),
 		)

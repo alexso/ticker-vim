@@ -11,16 +11,33 @@ Ticker with Vim navigation, fuzzy filtering, and visible watchlist groups
 <img align="center" src="./docs/ticker.gif" />
 </p>
 
-## Features
+## What is ticker-vim?
 
-* Vim-style navigation with `j`, `k`, `g`, and `G`
-* Switch groups with `h`, `l`, `Tab`, or `Shift-Tab`
-* Fuzzy-filter symbols and company names with `/`
-* Visible group tabs in the footer
-* Live stock & crypto price quotes
-* Track value of your stock positions
-* Support for multiple cost basis lots
-* Support for pre and post market price quotes
+`ticker-vim` is a fork of [Ticker](https://github.com/achannarasappa/ticker),
+focused on keyboard-driven watchlist management. It keeps Ticker's market data,
+portfolio, group, and configuration features while adding Vim navigation, fuzzy
+filtering, visible group tabs, and in-app editing.
+
+Ticker was created by Achanna Rasappa and contributors. This fork remains
+licensed under GPL-3.0.
+
+## Differences from Ticker
+
+|Feature|ticker-vim|
+|---|---|
+|Navigation|Select rows with `j`/`k`, jump with `u`/`d`, and go to the first or last row with `g`/`G`|
+|Selection|Highlights the complete selected row with a configurable background color|
+|Groups|Shows groups as numbered footer tabs; switch with `h`/`l`, `Tab`/`Shift-Tab`, or `1`–`9`|
+|Filtering|Fuzzy-filter the current group by symbol or display name with `/`|
+|Watchlist editing|Search, preview, and add with `a`; delete with `x`; edit a display name with `e`|
+|Names|Uses inline `.ticker.yaml` comments as editable display names|
+|Display order|Toggle name-first or symbol-first rows with `t`, and remember the choice|
+|Sorting|Starts alphabetically and remembers the chosen sorting separately for each group|
+|Quote time|Can show Yahoo's timestamp for each quote, including its date when it is not from today|
+|Configuration|Stores fork-specific preferences separately in `ticker-vim.yaml`|
+
+The original live quotes, pre/post-market data, positions, multiple cost-basis
+lots, summaries, groups, currency conversion, and color schemes remain available.
 
 ## Install
 
@@ -33,8 +50,13 @@ brew install alexso/tap/ticker-vim
 Apple Silicon and Intel macOS archives are also available from the
 [releases page](https://github.com/alexso/ticker-vim/releases).
 
-`ticker-vim` remains compatible with Ticker configuration files, including
-`~/.config/ticker/.ticker.yaml` when supplied with `--config`.
+`ticker-vim` remains compatible with Ticker's `.ticker.yaml`. It searches the
+home directory, current directory, `$XDG_CONFIG_HOME`, and
+`$XDG_CONFIG_HOME/ticker`, so this location works without an extra flag:
+
+```text
+~/.config/ticker/.ticker.yaml
+```
 
 ## Quick Start
 
@@ -46,19 +68,120 @@ ticker-vim -w NET,AAPL,TSLA
 
 |Key|Action|
 |---|---|
-|`j` / `k`|Scroll down / up|
+|`j` / `k`|Select the next / previous stock|
+|`u` / `d`|Jump up / down half a visible screen|
 |`g` / `G`|Jump to top / bottom|
 |`h` / `l`|Previous / next group|
 |`Tab` / `Shift-Tab`|Next / previous group|
+|`1`–`9`|Open that numbered group directly|
 |`/`|Start fuzzy filtering|
-|`Enter`|Keep the current filter|
-|`Esc`|Clear the filter|
+|`a`|Search, preview, and add a stock to the active group|
+|`x`|Preview and delete the selected stock from the active group|
+|`e`|Edit the selected stock's display name|
+|`t`|Toggle whether the name or symbol appears first|
+|`s`|Cycle the active group's sorting|
+|`Enter`|Accept the current filter or dialog choice|
+|`Esc`|Clear the filter or close a dialog|
 |`q`|Quit|
 
-## About this fork
+All fork-added shortcuts can be remapped in `ticker-vim.yaml`. The original
+`Tab`, `Shift-Tab`, `s`, `q`, `Enter`, and `Esc` controls are not remapped there.
 
-This project is a fork of [Ticker](https://github.com/achannarasappa/ticker),
-created by Achanna Rasappa and contributors. It remains licensed under GPL-3.0.
+## ticker-vim configuration
+
+Fork-specific preferences live in `ticker-vim.yaml`, beside the `.ticker.yaml`
+that was selected at startup. For the XDG path above, the files are:
+
+```text
+~/.config/ticker/.ticker.yaml
+~/.config/ticker/ticker-vim.yaml
+```
+
+Every setting is optional. This example contains all defaults:
+
+```yaml
+keybindings:
+  select-up: k
+  select-down: j
+  select-first: g
+  select-last: G
+  page-up: u
+  page-down: d
+  previous-group: h
+  next-group: l
+  groups: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  filter: "/"
+  add-stock: a
+  delete-stock: x
+  edit-name: e
+  toggle-first-line: t
+
+highlight:
+  background: "#142350"
+
+sorting:
+  default: alpha
+  groups: {}
+
+display:
+  first-line: name
+  quote-time: true
+```
+
+Key names use Bubble Tea notation, for example `ctrl+n`, `alt+1`, `shift+tab`,
+and `enter`. Group shortcuts map by position, so the first entry opens the first
+group, the second opens the second group, and so on.
+
+### Row display and highlighting
+
+`highlight.background` sets the selected row's background using a `#RRGGBB`
+color. `display.first-line` accepts `name` or `symbol`; pressing the configured
+toggle key saves the new value immediately.
+
+When `display.quote-time` is `true` and `show-tags: true` is enabled in
+`.ticker.yaml`, the middle tag contains the quote timestamp instead of `Live`.
+Today's quotes show only the time. Older quotes also show the date, and exchanges
+with delayed data include the delay beside the timestamp. If the data source does
+not provide a timestamp, the tag falls back to `Live` or `Delayed`.
+
+### Display names
+
+An inline watchlist comment is used as that symbol's display name and takes
+precedence over Yahoo's name:
+
+```yaml
+watchlist:
+  - AAPL # Apple Inc.
+```
+
+Pressing `e` edits this comment. This is valid YAML and remains compatible with
+Ticker, which simply treats it as a comment.
+
+### Adding and deleting stocks
+
+The add-stock dialog accepts a public symbol or company name, searches Yahoo
+Finance, and displays canonical exchange-specific symbols such as `BOL.ST`. It
+shows a current-price preview and asks for confirmation before updating the active
+group in `.ticker.yaml`. New entries include Yahoo's company or fund name as an
+inline YAML comment.
+
+Press `x` to preview and confirm removal of the highlighted stock from only the
+active group's watchlist in `.ticker.yaml`; the same symbol in other groups is
+untouched.
+
+### Sorting
+
+Sorting starts alphabetically. Changes made with `s` are remembered independently
+for each group under `sorting.groups` in `ticker-vim.yaml`; `.ticker.yaml` is not
+changed by sorting. These UI preferences take precedence over the older `sort:`
+setting in `.ticker.yaml`.
+
+## Stock and portfolio configuration
+
+Market data, groups, positions, currency conversion, tags, and original color
+settings remain in `.ticker.yaml`. The interface preferences above intentionally
+use a separate file, making it easy to share the stock configuration with the
+original Ticker.
 
 ## Usage
 |Option Name|Alias|Flag|Default|Description|
@@ -66,7 +189,7 @@ created by Achanna Rasappa and contributors. It remains licensed under GPL-3.0.
 |                   |  |--config           |`~/.ticker.yaml`|config file location with watchlist and positions|
 |`interval`         |-i|--interval         |`5`             |Refresh interval in seconds|
 |`watchlist`        |-w|--watchlist        |                |comma separated list of symbols to watch|
-|`show-tags`        |  |--show-tags        |                |display currency, exchange name, and quote delay for each quote |
+|`show-tags`        |  |--show-tags        |                |display currency, quote timestamp or delay, and exchange name for each quote |
 |`show-fundamentals`|  |--show-fundamentals|                |display open price, previous close, and day range |
 |`show-separator`   |  |--show-separator   |                |layout with separators between each quote|
 |`show-summary`     |  |--show-summary     |                |show total day change, total value, and total value change|
@@ -125,7 +248,7 @@ groups:
 * `.ticker.yaml` can be set in user home directory, the current directory, or [XDG config home](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)
 * Quantities can be negative to represent closed positions (position netting), short positions, borrowed assets, and other concepts
 
-### Display Options
+### Expanded display
 
 With  `--show-summary`, `--show-tags`, `--show-fundamentals`, `--show-positions`, and `--show-separator` options set, the layout and information displayed expands:
 
@@ -142,25 +265,25 @@ It's possible to set a custom sort order with the `--sort` flag or `sort:` confi
 
 ### Groups
 
-Watchlists and lots can be grouped in `.ticker.yml` under the `groups` property. While running `ticker`, press <kbd>TAB</kbd> to cycle forward through groups or <kbd>SHIFT+TAB</kbd> to cycle backward.
+Watchlists and lots can be grouped in `.ticker.yaml` under the `groups` property. While running `ticker-vim`, press <kbd>TAB</kbd> to cycle forward through groups or <kbd>SHIFT+TAB</kbd> to cycle backward, or use the group shortcuts described above.
 
 * If top level `watchlist` or `lots` properties are defined in the configuration file, the entries there will be added to a group named `default` which will always be shown first
 * Ordering is defined by order in the configuration file
 
 ### Data Sources & Symbols
 
-`ticker` pulls market data from a few different sources with Yahoo Finance as the default. Symbols for non default data sources follow the format `<symbol>.<source>` where `<symbol>` is the canonical symbol within that data source and `<source>` is the data source specifier. Below is a list of the supported data sources and their specifiers:
+`ticker-vim` pulls market data from a few different sources with Yahoo Finance as the default. Symbols for non-default data sources follow the format `<symbol>.<source>` where `<symbol>` is the canonical symbol within that data source and `<source>` is the data source specifier. Below is a list of the supported data sources and their specifiers:
 
 * *none* - symbols with no suffix will default to Yahoo Finance as the data source
-* `.X` - symbols with this suffix are shorthand symbols that are specific to ticker and intended to provide more concise and familiar symbols for popular assets (e.g. using `SOL.X` rather than `SOLANA.CG`)
+* `.X` - symbols with this suffix are shorthand symbols inherited from Ticker and intended to provide more concise and familiar symbols for popular assets (e.g. using `SOL.X` rather than `SOLANA.CG`)
   * The full list of ticker symbols can be found [here](https://github.com/achannarasappa/ticker-static/blob/master/symbols.csv). Initial values are populated with the top cryptocurrencies by volume on Coinbase at the time of update
-* `.CB` - symbols with this suffix will use Coinbase as the data source. The symbol can be found by searching for the asset on [Coinbase](https://www.coinbase.com/explore/s/listed) and finding the symbol for the asset. (e.g. for Starknet check the [market page](https://www.coinbase.com/advanced-trade/spot/STRK-USD) to find the symbol `STRK` and set the symbol to `STRK.CB` in ticker).
+* `.CB` - symbols with this suffix will use Coinbase as the data source. The symbol can be found by searching for the asset on [Coinbase](https://www.coinbase.com/explore/s/listed) and finding the symbol for the asset. (e.g. for Starknet check the [market page](https://www.coinbase.com/advanced-trade/spot/STRK-USD) to find the symbol `STRK` and set the symbol to `STRK.CB` in ticker-vim).
 
 Note: Coincap (`.CC`) and CoinGecko (`.CG`) are no longer supported after v5.0.0
 
 ### Currency Conversion
 
-`ticker` supports converting from the exchange's currency to a local currency. This can be set by setting the `currency` property in `.ticker.yaml` to a [ISO 4217 3-digit currency code](https://docs.1010data.com/1010dataReferenceManual/DataTypesAndFormats/currencyUnitCodes.html).
+`ticker-vim` supports converting from the exchange's currency to a local currency. This can be set by setting the `currency` property in `.ticker.yaml` to an [ISO 4217 3-digit currency code](https://docs.1010data.com/1010dataReferenceManual/DataTypesAndFormats/currencyUnitCodes.html).
 
 <img src="./docs/ticker-currency.png" />
 
@@ -173,7 +296,7 @@ Note: Coincap (`.CC`) and CoinGecko (`.CG`) are no longer supported after v5.0.0
 
 #### Minor currencies
 
-`ticker` supports quotes returned in a currency's minor unit rather than its major unit (e.g. London Stock Exchange listings quoted in pence as `GBp` instead of pounds as `GBP`). Minor unit conversion to major unit behavior can be controlled similarly to the currency conversion feature.
+`ticker-vim` supports quotes returned in a currency's minor unit rather than its major unit (e.g. London Stock Exchange listings quoted in pence as `GBp` instead of pounds as `GBP`). Minor unit conversion to major unit behavior can be controlled similarly to the currency conversion feature.
 
 These are the behaviors for a minor unit quote:
 * No `currency` set (or `currency-summary-only: true`) - per-position values, quote price, and the cost basis are all displayed in the minor unit and cost basis should be set in the minor unit
@@ -182,11 +305,11 @@ These are the behaviors for a minor unit quote:
 
 ### Cache
 
-`ticker` caches reference data to single local file shared between sessions and instances of `ticker` to speed up startup. The cache can be disabled with `--no-cache` flag or `cache: false` in `.ticker.yaml`.
+`ticker-vim` caches reference data to a single local file shared between sessions to speed up startup. The cache can be disabled with the `--no-cache` flag or `cache: false` in `.ticker.yaml`.
 
 ### Custom Color Schemes
 
-`ticker` supports setting custom color schemes from the config file. Colors are represented by a [hex triplet](https://en.wikipedia.org/wiki/Web_colors#Hex_triplet). Below is an annotated example config block from `.ticker.yaml` where custom colors are set:
+`ticker-vim` supports setting custom color schemes from the stock config file. Colors are represented by a [hex triplet](https://en.wikipedia.org/wiki/Web_colors#Hex_triplet). Below is an annotated example config block from `.ticker.yaml` where custom colors are set:
 
 ```yaml
 # ~/.ticker.yaml
@@ -209,10 +332,10 @@ colors:
 
 ### Printing Positions
 
-`ticker` supports printing positions to the terminal as text by using `ticker print`. Output defaults to JSON but CSV output can also be generated by passing the `--format=csv` flag.
+`ticker-vim` supports printing positions to the terminal as text with `ticker-vim print`. Output defaults to JSON but CSV output can also be generated by passing the `--format=csv` flag.
 
 ```sh
-$ ticker --config=./.ticker.yaml print
+$ ticker-vim --config=./.ticker.yaml print
 [{"name":"Airbnb, Inc.","symbol":"ABNB","price":164.71,"value":16965.13,"cost":15038,"quantity":103,"weight":53.66651978212161},{"name":"Tesla, Inc.","symbol":"TSLA","price":732.35,"value":14647,"cost":15660,"quantity":20,"weight":46.33348021787839}]
 ```
 
@@ -222,14 +345,23 @@ $ ticker --config=./.ticker.yaml print
 ## Notes
 
 * **Market data delay**
-  * _Yahoo Finance_ - Market data pulled from Yahoo finance will have some lag (<~30s) introduced by intermediary systems and certain exchanges will impose intentional delays on data. NYSE and NASDAQ offer real-time market data but other exchanges may not. Consult the [help article](https://help.yahoo.com/kb/SLN2310.html) on exchange delays to determine which exchanges you can expect delays for or use the `--show-tags` flag to include timeliness of data alongside quotes in `ticker`. Yahoo Finance also relies on polling which introduces some delay (>=5s). `interval` determines the polling frequency.
+  * _Yahoo Finance_ - Market data pulled from Yahoo Finance will have some lag (<~30s) introduced by intermediary systems and certain exchanges will impose intentional delays on data. NYSE and NASDAQ offer real-time market data but other exchanges may not. Consult the [help article](https://help.yahoo.com/kb/SLN2310.html) on exchange delays to determine which exchanges you can expect delays for or use the `--show-tags` flag to include each quote's timestamp and reported delay. Yahoo Finance also relies on polling, so `interval` determines the polling frequency.
   * _Coinbase_ - Market data for spot assets on Coinbase is directly streamed from the exchange through a WebSocket connection and is available in near real-time. Derivatives assets (i.e. symbols with `-CDE` suffix) are polling based however Basis is updated in near real-time based on spot market data changes
-* **Non-US Symbols, Forex, ETFs** - The names for there may differ from their common name/symbols. Try searching the native name in [Yahoo finance](https://finance.yahoo.com/) to determine the symbol to use in `ticker`
+* **Non-US Symbols, Forex, ETFs** - Their Yahoo names and symbols may differ from the familiar public names. Use `a` to search or check [Yahoo Finance](https://finance.yahoo.com/) for the canonical symbol.
 * **Terminal fonts** - Font with support for the [`HORIZONTAL LINE SEPARATOR` unicode character](https://www.fileformat.info/info/unicode/char/23af/fontsupport.htm) is required to properly render separators (`--show-separator` option)
 
 ## Integrations
 
 * [alpaca-ticker-config](https://www.npmjs.com/package/alpaca-ticker-config) - Pull [alpaca.markets](https://alpaca.markets) positions into `.ticker.yaml` from the command line
+
+## Updating from upstream
+
+The upstream project is [achannarasappa/ticker](https://github.com/achannarasappa/ticker).
+To incorporate a newer upstream version, fetch its tags and merge the desired tag
+or branch into a separate update branch. Resolve any conflicts there, then run the
+full tests and lint checks before merging it into the fork's main development
+branch. Keeping fork-specific UI settings in `ticker-vim.yaml` reduces overlap
+with upstream's `.ticker.yaml` format.
 
 ## Development
 
@@ -243,7 +375,7 @@ Linting:
 go tool golangci-lint run
 ```
 
-## Libraries `ticker` uses
+## Libraries ticker-vim uses
 
 * [bubbletea](https://github.com/charmbracelet/bubbletea) - terminal UI framework
 * [termenv](https://github.com/muesli/termenv) - color and styling for the terminal

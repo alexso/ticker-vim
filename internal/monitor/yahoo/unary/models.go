@@ -37,6 +37,9 @@ type ResponseQuote struct {
 	FiftyTwoWeekLow            ResponseFieldFloat  `json:"fiftyTwoWeekLow"`
 	QuoteType                  string              `json:"quoteType"`
 	MarketCap                  ResponseFieldFloat  `json:"marketCap"`
+	RegularMarketTime          ResponseFieldInt    `json:"regularMarketTime"`
+	PostMarketTime             ResponseFieldInt    `json:"postMarketTime"`
+	PreMarketTime              ResponseFieldInt    `json:"preMarketTime"`
 }
 
 type ResponseFieldFloat struct {
@@ -46,5 +49,10 @@ type ResponseFieldFloat struct {
 
 type ResponseFieldString struct {
 	Raw string `json:"raw"`
+	Fmt string `json:"fmt"`
+}
+
+type ResponseFieldInt struct {
+	Raw int64  `json:"raw"`
 	Fmt string `json:"fmt"`
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/acarl005/stripansi"
 	c "github.com/alexso/ticker-vim/v5/internal/common"
+	"github.com/alexso/ticker-vim/v5/internal/stocksearch"
 )
 
 func TestRenderGroupTabs(t *testing.T) {
@@ -22,5 +23,22 @@ func TestRenderGroupTabs(t *testing.T) {
 	}
 	if got, want := width, len(" 1 Stockholm  2 USA  3 ETC "); got != want {
 		t.Fatalf("group tab width = %d, want %d", got, want)
+	}
+}
+
+func TestPrioritizeCandidatesForActiveGroup(t *testing.T) {
+	t.Parallel()
+	candidates := []stocksearch.Candidate{
+		{Symbol: "BINI", Exchange: "OTC Markets"},
+		{Symbol: "BOL.ST", Exchange: "Stockholm"},
+		{Symbol: "BOLT", Exchange: "NASDAQ"},
+	}
+
+	prioritized := prioritizeCandidates(candidates, "Stockholm")
+	if prioritized[0].Symbol != "BOL.ST" {
+		t.Fatalf("first candidate = %s, want BOL.ST", prioritized[0].Symbol)
+	}
+	if candidates[0].Symbol != "BINI" {
+		t.Fatal("input candidates were mutated")
 	}
 }

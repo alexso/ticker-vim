@@ -309,7 +309,7 @@ var _ = Describe("Monitor Yahoo", func() {
 							fields := query.Get("fields")
 							if fields == "regularMarketPrice,currency" {
 								json.NewEncoder(w).Encode(currencyResponseFixture)
-							} else if fields == "shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,postMarketChange,postMarketChangePercent,postMarketPrice,preMarketChange,preMarketChangePercent,preMarketPrice,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap" {
+							} else if fields == "shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketTime,postMarketChange,postMarketChangePercent,postMarketPrice,postMarketTime,preMarketChange,preMarketChangePercent,preMarketPrice,preMarketTime,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap" {
 								if calledCount > 3 {
 
 									quoteNewPrice := quoteCloudflareFixture

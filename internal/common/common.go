@@ -9,11 +9,12 @@ import (
 
 // Context represents user defined configuration and derived reference configuration
 type Context struct {
-	Config    Config
-	Groups    []AssetGroup
-	Reference Reference
-	Logger    *log.Logger
-	Cache     Cache
+	Config     Config
+	ConfigPath string
+	Groups     []AssetGroup
+	Reference  Reference
+	Logger     *log.Logger
+	Cache      Cache
 }
 
 // Cache is a key/value store for data fetched at startup and other
@@ -75,6 +76,7 @@ type ConfigAssetGroup struct {
 type AssetGroup struct {
 	ConfigAssetGroup
 	SymbolsBySource []AssetGroupSymbolsBySource
+	DisplayNames    map[string]string
 }
 
 type AssetGroupSymbolsBySource struct {
@@ -216,6 +218,7 @@ type Exchange struct {
 	State                   ExchangeState
 	IsActive                bool
 	IsRegularTradingSession bool
+	QuoteTime               int64
 }
 
 type ExchangeState int

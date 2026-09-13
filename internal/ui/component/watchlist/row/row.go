@@ -19,6 +19,7 @@ const (
 	WidthGutter         = 1
 	WidthLabel          = 15
 	WidthName           = 20
+	WidthNameFirst      = 32
 	WidthPositionGutter = 2
 	WidthChangeStatic   = 12 // "↓ " + " (100.00%)" = 12 length
 	WidthRangeStatic    = 3  // " - " = 3 length
@@ -50,9 +51,13 @@ type Config struct {
 	ExtraInfoFundamentals bool
 	Styles                c.Styles
 	Asset                 *c.Asset
+	FirstLine             string
+	ShowQuoteTime         bool
 }
 
 type UpdateAssetMsg *c.Asset
+
+type SetFirstLineMsg string
 
 type FrameMsg int
 
@@ -97,6 +102,11 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
+	case SetFirstLineMsg:
+		m.config.FirstLine = string(msg)
+
+		return m, nil
+
 	case SetCellWidthsMsg:
 		m.cellWidths = msg.CellWidths
 		m.width = msg.Width
@@ -216,7 +226,7 @@ func (m *Model) View() string {
 			grid.Row{
 				Width: m.width,
 				Cells: []grid.Cell{
-					{Text: textTags(m.config.Asset, m.config.Styles)},
+					{Text: textTags(m.config.Asset, m.config.Styles, m.config.ShowQuoteTime)},
 				},
 			})
 	}
@@ -236,11 +246,15 @@ func (m *Model) View() string {
 }
 
 func (m *Model) buildCells() []grid.Cell {
+	nameWidth := WidthName
+	if m.config.FirstLine == "name" {
+		nameWidth = WidthNameFirst
+	}
 
 	if !m.config.ExtraInfoFundamentals && !m.config.ShowPositions {
 
 		return []grid.Cell{
-			{Text: textName(m.config.Asset, m.config.Styles)},
+			{Text: textName(m.config.Asset, m.config.Styles, m.config.FirstLine, nameWidth)},
 			{Text: textMarketState(m.config.Asset, m.config.Styles), Width: WidthMarketState, Align: grid.Right},
 			{Text: textQuote(m.config.Asset, m.config.Styles, m.priceStyle, m.priceNoChangeSegment, m.priceChangeSegment), Width: m.cellWidths.WidthQuote, Align: grid.Right},
 		}
@@ -248,7 +262,7 @@ func (m *Model) buildCells() []grid.Cell {
 	}
 
 	cellName := []grid.Cell{
-		{Text: textName(m.config.Asset, m.config.Styles), Width: WidthName},
+		{Text: textName(m.config.Asset, m.config.Styles, m.config.FirstLine, nameWidth), Width: nameWidth},
 		{Text: ""},
 		{Text: textMarketState(m.config.Asset, m.config.Styles), Width: WidthMarketState, Align: grid.Right},
 	}
@@ -256,7 +270,7 @@ func (m *Model) buildCells() []grid.Cell {
 	cells := []grid.Cell{
 		{Text: textQuote(m.config.Asset, m.config.Styles, m.priceStyle, m.priceNoChangeSegment, m.priceChangeSegment), Width: m.cellWidths.WidthQuote, Align: grid.Right},
 	}
-	widthMinTerm := WidthName + WidthMarketState + m.cellWidths.WidthQuote + (3 * WidthGutter)
+	widthMinTerm := nameWidth + WidthMarketState + m.cellWidths.WidthQuote + (3 * WidthGutter)
 
 	if m.config.ShowPositions {
 		widthHoldings := widthMinTerm + m.cellWidths.WidthPosition + (3 * WidthGutter) + m.cellWidths.WidthPositionExtended + WidthLabel
@@ -340,15 +354,28 @@ func (m *Model) buildCells() []grid.Cell {
 
 }
 
-func textName(asset *c.Asset, styles c.Styles) string {
+func textName(asset *c.Asset, styles c.Styles, firstLine string, nameWidth int) string {
+	if firstLine == "name" {
+		name := truncateRunes(asset.Name, nameWidth)
 
-	if len(asset.Name) > 20 {
-		asset.Name = asset.Name[:20]
+		return styles.TextBold(name) +
+			"\n" +
+			styles.TextLabel(asset.Symbol)
 	}
+	name := string([]rune(asset.Name)[:min(len([]rune(asset.Name)), WidthName)])
 
 	return styles.TextBold(asset.Symbol) +
 		"\n" +
-		styles.TextLabel(asset.Name)
+		styles.TextLabel(name)
+}
+
+func truncateRunes(value string, maxLength int) string {
+	runes := []rune(value)
+	if len(runes) <= maxLength {
+		return value
+	}
+
+	return string(runes[:maxLength-1]) + "…"
 }
 
 func textQuote(asset *c.Asset, styles c.Styles, priceStyle lipgloss.Style, priceNoChangeSegment string, priceChangeSegment string) string {
@@ -551,7 +578,7 @@ func textSeparator(width int, styles c.Styles) string {
 	return styles.TextLine(strings.Repeat("─", width))
 }
 
-func textTags(asset *c.Asset, styles c.Styles) string {
+func textTags(asset *c.Asset, styles c.Styles, showQuoteTime bool) string {
 
 	currencyText := asset.Currency.FromCurrencyCode
 
@@ -559,7 +586,26 @@ func textTags(asset *c.Asset, styles c.Styles) string {
 		currencyText = asset.Currency.FromCurrencyCode + " → " + asset.Currency.ToCurrencyCode
 	}
 
-	return formatTag(currencyText, styles) + " " + formatTag(exchangeDelayText(asset.Exchange.Delay, asset.Exchange.DelayText), styles) + " " + formatTag(asset.Exchange.Name, styles)
+	marketTimeText := exchangeDelayText(asset.Exchange.Delay, asset.Exchange.DelayText)
+	if showQuoteTime && asset.Exchange.QuoteTime > 0 {
+		marketTimeText = quoteTimeText(asset.Exchange.QuoteTime, asset.Exchange.Delay)
+	}
+
+	return formatTag(currencyText, styles) + " " + formatTag(marketTimeText, styles) + " " + formatTag(asset.Exchange.Name, styles)
+}
+
+func quoteTimeText(timestamp int64, delay float64) string {
+	now := time.Now()
+	quoteTime := time.Unix(timestamp, 0).In(now.Location())
+	text := quoteTime.Format("15:04:05")
+	if quoteTime.Year() != now.Year() || quoteTime.YearDay() != now.YearDay() {
+		text = quoteTime.Format("2006-01-02 15:04")
+	}
+	if delay > 0 {
+		text += " · " + strconv.FormatFloat(delay, 'f', 0, 64) + "m delay"
+	}
+
+	return text
 }
 
 func exchangeDelayText(delay float64, delayText string) string {

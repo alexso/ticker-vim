@@ -73,6 +73,24 @@ var _ = Describe("Check", func() {
 				Expect(server.ReceivedRequests()).To(BeEmpty())
 			})
 		})
+
+		When("the cached version differs only by a v prefix", func() {
+			It("should not report an update", func() {
+				setupCache(fs, "v5.3.3", time.Hour)
+				output := updater.Check("5.3.3", server.URL()+"/releases/latest", cacheFilePath, fs)
+				Expect(output).To(BeEmpty())
+				Expect(server.ReceivedRequests()).To(BeEmpty())
+			})
+		})
+
+		When("the cached release is older than the installed version", func() {
+			It("should not report an update", func() {
+				setupCache(fs, "v5.3.2", time.Hour)
+				output := updater.Check("v5.3.3", server.URL()+"/releases/latest", cacheFilePath, fs)
+				Expect(output).To(BeEmpty())
+				Expect(server.ReceivedRequests()).To(BeEmpty())
+			})
+		})
 	})
 
 	When("the cache is stale", func() {

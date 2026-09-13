@@ -67,7 +67,7 @@ func getCurrencyRateByUse(ctx c.Context, assetClass c.AssetClass, fromCurrency s
 
 	// Convert only the summary currency to the default currency (USD) when currency conversion is not enabled
 	return currencyRateByUse{
-		ToCurrencyCode: toCurrency,
+		ToCurrencyCode: fromCurrency,
 		QuotePrice:     1.0,
 		PositionCost:   1.0,
 		SummaryValue:   rate,

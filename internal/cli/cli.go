@@ -177,7 +177,7 @@ func GetContext(d c.Dependencies, config c.Config) (c.Context, error) {
 
 func readConfig(fs afero.Fs, configPathOption string) (c.Config, error) {
 	var config c.Config
-	configPath, err := getConfigPath(fs, configPathOption)
+	configPath, err := GetConfigPath(fs, configPathOption)
 
 	if err != nil {
 		return config, nil //nolint:nilerr
@@ -267,7 +267,8 @@ func getCacheOption(noCacheFlag bool, configValue *bool) *bool {
 	return &enabled
 }
 
-func getConfigPath(fs afero.Fs, configPathOption string) (string, error) {
+// GetConfigPath resolves the stock configuration file actually used by ticker-vim.
+func GetConfigPath(fs afero.Fs, configPathOption string) (string, error) {
 	var err error
 	if configPathOption != "" {
 		return configPathOption, nil

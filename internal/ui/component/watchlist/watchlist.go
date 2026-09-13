@@ -14,8 +14,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const selectedRowBackground = "\x1b[48;2;20;35;80m"
-
 var ansiStylePattern = regexp.MustCompile(`\x1b\[[0-9;]*m`) //nolint:gochecknoglobals
 
 // Config represents the configuration for the watchlist component
@@ -26,21 +24,25 @@ type Config struct {
 	ExtraInfoFundamentals bool
 	Sort                  string
 	Styles                c.Styles
+	HighlightBackground   string
+	FirstLine             string
+	ShowQuoteTime         bool
 }
 
 // Model for watchlist section
 type Model struct {
-	width          int
-	sourceAssets   []*c.Asset
-	assets         []*c.Asset
-	assetsBySymbol map[string]*c.Asset
-	sorter         s.Sorter
-	config         Config
-	cellWidths     row.CellWidthsContainer
-	rows           []*row.Model
-	rowsBySymbol   map[string]*row.Model
-	filter         string
-	selectedIndex  int
+	width              int
+	sourceAssets       []*c.Asset
+	assets             []*c.Asset
+	assetsBySymbol     map[string]*c.Asset
+	sorter             s.Sorter
+	config             Config
+	cellWidths         row.CellWidthsContainer
+	rows               []*row.Model
+	rowsBySymbol       map[string]*row.Model
+	filter             string
+	selectedIndex      int
+	selectedBackground string
 }
 
 // Messages for replacing assets
@@ -55,22 +57,34 @@ type ChangeSortMsg string
 // ChangeFilterMsg updates the case-insensitive symbol/name filter.
 type ChangeFilterMsg string
 
+// ChangeFirstLineMsg changes whether the name or symbol is rendered first.
+type ChangeFirstLineMsg string
+
 // MoveSelectionMsg moves the highlighted row by the supplied offset.
 type MoveSelectionMsg int
+
+// MoveSelectionPageMsg moves the selection approximately one viewport page.
+type MoveSelectionPageMsg struct {
+	Direction int
+	Height    int
+}
 
 // SetSelectionMsg selects an exact visible row index.
 type SetSelectionMsg int
 
 // NewModel returns a model with default values
 func NewModel(config Config) *Model {
+	selectedBackground := backgroundSequence(config.HighlightBackground)
+
 	return &Model{
-		width:          80,
-		sourceAssets:   make([]*c.Asset, 0),
-		config:         config,
-		assets:         make([]*c.Asset, 0),
-		assetsBySymbol: make(map[string]*c.Asset),
-		sorter:         s.NewSorter(config.Sort),
-		rowsBySymbol:   make(map[string]*row.Model),
+		width:              80,
+		sourceAssets:       make([]*c.Asset, 0),
+		config:             config,
+		assets:             make([]*c.Asset, 0),
+		assetsBySymbol:     make(map[string]*c.Asset),
+		sorter:             s.NewSorter(config.Sort),
+		rowsBySymbol:       make(map[string]*row.Model),
+		selectedBackground: selectedBackground,
 	}
 }
 
@@ -100,8 +114,21 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 		return m.setVisibleAssets(m.filteredAssets())
 
+	case ChangeFirstLineMsg:
+		m.config.FirstLine = string(msg)
+		for index, currentRow := range m.rows {
+			m.rows[index], _ = currentRow.Update(row.SetFirstLineMsg(msg))
+		}
+
+		return m, nil
+
 	case MoveSelectionMsg:
 		m.setSelectedIndex(m.selectedIndex + int(msg))
+
+		return m, nil
+
+	case MoveSelectionPageMsg:
+		m.moveSelectionPage(msg.Direction, msg.Height)
 
 		return m, nil
 
@@ -178,6 +205,8 @@ func (m *Model) setVisibleAssets(assets []*c.Asset) (*Model, tea.Cmd) {
 				ShowPositions:         m.config.ShowPositions,
 				Styles:                m.config.Styles,
 				Asset:                 asset,
+				FirstLine:             m.config.FirstLine,
+				ShowQuoteTime:         m.config.ShowQuoteTime,
 			}))
 		}
 		rowsBySymbol[asset.Symbol] = m.rows[i]
@@ -232,6 +261,41 @@ func (m *Model) SelectedLineRange() (int, int, bool) {
 	return start, start + height - 1, true
 }
 
+// SelectedAsset returns the currently highlighted visible asset.
+func (m *Model) SelectedAsset() (c.Asset, bool) {
+	if len(m.assets) == 0 || m.selectedIndex >= len(m.assets) {
+		return c.Asset{}, false
+	}
+
+	return *m.assets[m.selectedIndex], true
+}
+
+func (m *Model) moveSelectionPage(direction int, height int) {
+	if len(m.rows) == 0 || direction == 0 {
+		return
+	}
+	if height < 1 {
+		height = 1
+	}
+	start, _, _ := m.SelectedLineRange()
+	target := start + direction*height
+	bestIndex := 0
+	bestDistance := int(^uint(0) >> 1)
+	line := 0
+	for index, row := range m.rows {
+		distance := line - target
+		if distance < 0 {
+			distance = -distance
+		}
+		if distance < bestDistance {
+			bestIndex = index
+			bestDistance = distance
+		}
+		line += strings.Count(row.View(), "\n") + 1
+	}
+	m.setSelectedIndex(bestIndex)
+}
+
 // fuzzyMatch performs a case-insensitive subsequence match. Empty queries match all assets.
 func fuzzyMatch(value string, query string) bool {
 	valueRunes := []rune(strings.ToLower(value))
@@ -267,7 +331,7 @@ func (m *Model) View() string {
 	for i, row := range m.rows {
 		view := row.View()
 		if i == m.selectedIndex {
-			view = highlightRow(view, m.width)
+			view = highlightRow(view, m.width, m.selectedBackground)
 		}
 		rows = append(rows, view)
 	}
@@ -276,16 +340,24 @@ func (m *Model) View() string {
 
 }
 
-func highlightRow(view string, width int) string {
+func highlightRow(view string, width int, background string) string {
 	padded := lipgloss.NewStyle().Width(width).Render(view)
 	// Text, tags, and animated prices contain their own ANSI resets and backgrounds.
 	// Reapply the selection background after every style sequence so the entire row
 	// remains one continuous highlighted surface.
 	highlighted := ansiStylePattern.ReplaceAllStringFunc(padded, func(style string) string {
-		return style + selectedRowBackground
+		return style + background
 	})
 
-	return selectedRowBackground + highlighted + "\x1b[0m"
+	return background + highlighted + "\x1b[0m"
+}
+
+func backgroundSequence(color string) string {
+	color = strings.TrimPrefix(color, "#")
+	var red, green, blue uint8
+	_, _ = fmt.Sscanf(color, "%02x%02x%02x", &red, &green, &blue)
+
+	return fmt.Sprintf("\x1b[48;2;%d;%d;%dm", red, green, blue)
 }
 func getCellWidths(assets []*c.Asset) row.CellWidthsContainer {
 

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	urlParams            = "&fields=shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,postMarketChange,postMarketChangePercent,postMarketPrice,preMarketChange,preMarketChangePercent,preMarketPrice,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap&formatted=true&lang=en-US&region=US&corsDomain=finance.yahoo.com"
+	urlParams            = "&fields=shortName,regularMarketChange,regularMarketChangePercent,regularMarketPrice,regularMarketPreviousClose,regularMarketOpen,regularMarketDayRange,regularMarketDayHigh,regularMarketDayLow,regularMarketVolume,regularMarketTime,postMarketChange,postMarketChangePercent,postMarketPrice,postMarketTime,preMarketChange,preMarketChangePercent,preMarketPrice,preMarketTime,fiftyTwoWeekHigh,fiftyTwoWeekLow,marketCap&formatted=true&lang=en-US&region=US&corsDomain=finance.yahoo.com"
 	urlParamsForCurrency = "&fields=regularMarketPrice,currency&formatted=true&lang=en-US&region=US&corsDomain=finance.yahoo.com"
 )
 

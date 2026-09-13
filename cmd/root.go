@@ -100,4 +100,14 @@ func initContext(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	ctx.ConfigPath, err = cli.GetConfigPath(dep.Fs, configPath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	if err = cli.ApplyDisplayNames(dep.Fs, ctx.ConfigPath, ctx.Groups); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/alexso/ticker-vim/v5/internal/cache"
 	"github.com/spf13/afero"
 )
@@ -44,10 +45,15 @@ func Check(currentVersion, releasesURL, cacheFilePath string, fs afero.Fs) strin
 	return newerVersion(latest, currentVersion)
 }
 
-// newerVersion returns latest when it differs from currentVersion, otherwise an
-// empty string.
+// newerVersion returns latest only when it is semantically newer than the
+// installed version. The parser treats 5.3.3 and v5.3.3 as the same version.
 func newerVersion(latest, currentVersion string) string {
-	if latest != currentVersion {
+	latestSemantic, latestErr := semver.NewVersion(latest)
+	currentSemantic, currentErr := semver.NewVersion(currentVersion)
+	if latestErr != nil || currentErr != nil {
+		return ""
+	}
+	if latestSemantic.GreaterThan(currentSemantic) {
 		return latest
 	}
 

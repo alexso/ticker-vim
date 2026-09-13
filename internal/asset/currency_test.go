@@ -114,11 +114,11 @@ var _ = Describe("Currency", func() {
 
 					Expect(assets).To(HaveLen(2))
 					Expect(assets[0].Currency.FromCurrencyCode).To(Equal("EUR"))
-					Expect(assets[0].Currency.ToCurrencyCode).To(Equal("USD"))
+					Expect(assets[0].Currency.ToCurrencyCode).To(Equal("EUR"))
 					Expect(assets[0].QuotePrice.Price).To(Equal(100.0))
 					Expect(assets[0].Position.Value).To(Equal(1000.0))
 					Expect(assets[1].Currency.FromCurrencyCode).To(Equal("GBP"))
-					Expect(assets[1].Currency.ToCurrencyCode).To(Equal("USD"))
+					Expect(assets[1].Currency.ToCurrencyCode).To(Equal("GBP"))
 					Expect(assets[1].QuotePrice.Price).To(Equal(100.0))
 					Expect(assets[1].Position.Value).To(Equal(1000.0))
 					// These will be correct since there is a conversion rate available to USD
