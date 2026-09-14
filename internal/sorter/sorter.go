@@ -3,6 +3,7 @@ package sorter
 import (
 	"cmp"
 	"slices"
+	"strings"
 
 	c "github.com/alexso/ticker-vim/v5/internal/common"
 )
@@ -11,9 +12,16 @@ import (
 type Sorter func([]*c.Asset) []*c.Asset
 
 // NewSorter creates a sorting function
-func NewSorter(sort string) Sorter {
+func NewSorter(sort string, firstLine ...string) Sorter {
+	if sort == "alpha" {
+		if len(firstLine) > 0 && firstLine[0] == "name" {
+			return sortByAlphaName
+		}
+
+		return sortByAlphaSymbol
+	}
+
 	var sortDict = map[string]Sorter{
-		"alpha": sortByAlpha,
 		"value": sortByValue,
 		"user":  sortByUser,
 	}
@@ -40,7 +48,21 @@ func sortByUser(assets []*c.Asset) []*c.Asset {
 
 }
 
-func sortByAlpha(assetsIn []*c.Asset) []*c.Asset {
+func sortByAlphaSymbol(assetsIn []*c.Asset) []*c.Asset {
+	return sortByAlpha(assetsIn, func(asset *c.Asset) string { return asset.Symbol })
+}
+
+func sortByAlphaName(assetsIn []*c.Asset) []*c.Asset {
+	return sortByAlpha(assetsIn, func(asset *c.Asset) string {
+		if strings.TrimSpace(asset.Name) == "" {
+			return asset.Symbol
+		}
+
+		return asset.Name
+	})
+}
+
+func sortByAlpha(assetsIn []*c.Asset, value func(*c.Asset) string) []*c.Asset {
 
 	assetCount := len(assetsIn)
 
@@ -52,6 +74,11 @@ func sortByAlpha(assetsIn []*c.Asset) []*c.Asset {
 	copy(assets, assetsIn)
 
 	slices.SortStableFunc(assets, func(a, b *c.Asset) int {
+		comparison := strings.Compare(strings.ToLower(value(a)), strings.ToLower(value(b)))
+		if comparison != 0 {
+			return comparison
+		}
+
 		return cmp.Compare(a.Symbol, b.Symbol)
 	})
 

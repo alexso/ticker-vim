@@ -1,6 +1,7 @@
 package uiconfig
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -56,7 +57,8 @@ func TestSortForGroupAndSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := "/config/ticker/ticker-vim.yaml"
-	if err := afero.WriteFile(fs, path, []byte("sorting:\n  default: alpha\n"), 0o640); err != nil {
+	input := "# interface preferences\nsorting:\n  default: alpha # valid: alpha, change, value, user\n  groups: {} # populated automatically\ndisplay:\n  first-line: name # name or symbol\n  quote-time: true # keep timestamps\n"
+	if err := afero.WriteFile(fs, path, []byte(input), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	config, err := Load(fs, "/config/ticker/.ticker.yaml")
@@ -76,6 +78,15 @@ func TestSortForGroupAndSave(t *testing.T) {
 	if got := reloaded.SortForGroup("Stockholm"); got != "value" {
 		t.Fatalf("remembered sort = %q, want value", got)
 	}
+	output, err := afero.ReadFile(fs, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{"# interface preferences", "# valid: alpha, change, value, user", "# populated automatically", "# name or symbol", "# keep timestamps"} {
+		if !strings.Contains(string(output), comment) {
+			t.Fatalf("comment %q was not preserved after sorting update:\n%s", comment, output)
+		}
+	}
 	if err := SaveFirstLine(fs, "/config/ticker/.ticker.yaml", reloaded, "symbol"); err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +96,15 @@ func TestSortForGroupAndSave(t *testing.T) {
 	}
 	if reloaded.Display.FirstLine != "symbol" {
 		t.Fatalf("remembered first line = %q, want symbol", reloaded.Display.FirstLine)
+	}
+	output, err = afero.ReadFile(fs, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{"# interface preferences", "# valid: alpha, change, value, user", "# populated automatically", "# name or symbol", "# keep timestamps"} {
+		if !strings.Contains(string(output), comment) {
+			t.Fatalf("comment %q was not preserved after display update:\n%s", comment, output)
+		}
 	}
 	if info, err := fs.Stat(path); err != nil || info.Mode().Perm() != 0o640 {
 		t.Fatalf("config mode was not preserved: info=%v err=%v", info, err)

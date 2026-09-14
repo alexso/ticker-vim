@@ -97,35 +97,42 @@ that was selected at startup. For the XDG path above, the files are:
 ~/.config/ticker/ticker-vim.yaml
 ```
 
+|Section|Controls|Saved automatically?|
+|---|---|---|
+|`keybindings`|Remappable shortcuts added by ticker-vim|No|
+|`highlight`|Selected-row background color|No|
+|`sorting`|Default sorting and per-group overrides|Per-group overrides are saved when you press `s`|
+|`display`|Name/symbol order and quote timestamps|`first-line` is saved when you press `t`|
+
 Every setting is optional. This example contains all defaults:
 
 ```yaml
 keybindings:
-  select-up: k
-  select-down: j
-  select-first: g
-  select-last: G
-  page-up: u
-  page-down: d
-  previous-group: h
-  next-group: l
-  groups: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  filter: "/"
-  add-stock: a
-  delete-stock: x
-  edit-name: e
-  toggle-first-line: t
+  select-up: k             # Select the previous stock
+  select-down: j           # Select the next stock
+  select-first: g          # Jump to the first stock
+  select-last: G           # Jump to the last stock
+  page-up: u               # Jump up half a visible screen
+  page-down: d             # Jump down half a visible screen
+  previous-group: h        # Open the previous group
+  next-group: l            # Open the next group
+  groups: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] # Direct shortcuts for groups 1–9
+  filter: "/"              # Open fuzzy filtering
+  add-stock: a             # Search for and add a stock
+  delete-stock: x          # Delete the selected stock from this group
+  edit-name: e             # Edit the selected stock's display name
+  toggle-first-line: t     # Toggle between name-first and symbol-first rows
 
 highlight:
-  background: "#142350"
+  background: "#142350"    # Selected-row color; use a #RRGGBB hex value
 
 sorting:
-  default: alpha
-  groups: {}
+  default: alpha           # alpha, change, value, or user
+  groups: {}               # Per-group overrides are added when you press s
 
 display:
-  first-line: name
-  quote-time: true
+  first-line: name         # name or symbol
+  quote-time: true         # true or false; requires show-tags in .ticker.yaml
 ```
 
 Key names use Bubble Tea notation, for example `ctrl+n`, `alt+1`, `shift+tab`,
@@ -171,10 +178,31 @@ untouched.
 
 ### Sorting
 
-Sorting starts alphabetically. Changes made with `s` are remembered independently
-for each group under `sorting.groups` in `ticker-vim.yaml`; `.ticker.yaml` is not
-changed by sorting. These UI preferences take precedence over the older `sort:`
-setting in `.ticker.yaml`.
+|Value|Order|
+|---|---|
+|`alpha`|Alphabetical by whichever value is displayed first: name or symbol|
+|`change`|Daily percentage change, with closed markets last|
+|`value`|Position value, highest first|
+|`user`|The order written in `.ticker.yaml`|
+
+`sorting.default` applies to every group that has no override. Pressing `s`
+cycles the active group's sorting and saves its choice under `sorting.groups`.
+For example:
+
+```yaml
+sorting:
+  default: alpha
+  groups:
+    Stockholm: alpha
+    USA: value
+    funds: change
+```
+
+In this example, any group other than Stockholm, USA, and funds uses `alpha`.
+The `groups` map starts as `{}` and is populated automatically as sorting choices
+are changed. Sorting only changes `ticker-vim.yaml`; it does not reorder or
+otherwise modify `.ticker.yaml`. These UI preferences take precedence over the
+older `sort:` setting in `.ticker.yaml`.
 
 ## Stock and portfolio configuration
 

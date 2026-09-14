@@ -82,7 +82,7 @@ func NewModel(config Config) *Model {
 		config:             config,
 		assets:             make([]*c.Asset, 0),
 		assetsBySymbol:     make(map[string]*c.Asset),
-		sorter:             s.NewSorter(config.Sort),
+		sorter:             s.NewSorter(config.Sort, config.FirstLine),
 		rowsBySymbol:       make(map[string]*row.Model),
 		selectedBackground: selectedBackground,
 	}
@@ -115,12 +115,18 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m.setVisibleAssets(m.filteredAssets())
 
 	case ChangeFirstLineMsg:
+		selectedSymbol := m.selectedSymbol()
 		m.config.FirstLine = string(msg)
 		for index, currentRow := range m.rows {
 			m.rows[index], _ = currentRow.Update(row.SetFirstLineMsg(msg))
 		}
+		m.sorter = s.NewSorter(m.config.Sort, m.config.FirstLine)
+		model, cmd := m.setVisibleAssets(m.filteredAssets())
+		if selectedSymbol != "" {
+			model.selectSymbol(selectedSymbol)
+		}
 
-		return m, nil
+		return model, cmd
 
 	case MoveSelectionMsg:
 		m.setSelectedIndex(m.selectedIndex + int(msg))
@@ -166,7 +172,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case ChangeSortMsg:
 		// Update the sorter with the new sort option
 		m.config.Sort = string(msg)
-		m.sorter = s.NewSorter(m.config.Sort)
+		m.sorter = s.NewSorter(m.config.Sort, m.config.FirstLine)
 
 		return m.setVisibleAssets(m.filteredAssets())
 
@@ -244,6 +250,24 @@ func (m *Model) setSelectedIndex(index int) {
 		index = len(m.rows) - 1
 	}
 	m.selectedIndex = index
+}
+
+func (m *Model) selectedSymbol() string {
+	if len(m.assets) == 0 || m.selectedIndex < 0 || m.selectedIndex >= len(m.assets) {
+		return ""
+	}
+
+	return m.assets[m.selectedIndex].Symbol
+}
+
+func (m *Model) selectSymbol(symbol string) {
+	for index, asset := range m.assets {
+		if asset.Symbol == symbol {
+			m.setSelectedIndex(index)
+
+			return
+		}
+	}
 }
 
 // SelectedLineRange returns the first and last rendered lines of the selected row.

@@ -120,3 +120,56 @@ func TestUpdateSymbolComment(t *testing.T) {
 		t.Fatalf("another group changed:\n%s", output)
 	}
 }
+
+func TestAddSymbolToEmptyWatchlistPreservesComments(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+	path := "/ticker/.ticker.yaml"
+	if err := fs.MkdirAll("/ticker", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	input := "# portfolio\nshow-tags: true # keep tags\ngroups:\n  - name: Stockholm # local market\n    watchlist: [] # starts empty\n"
+	if err := afero.WriteFile(fs, path, []byte(input), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := AddSymbolToConfig(fs, path, "Stockholm", "BOL.ST", "Boliden"); err != nil {
+		t.Fatal(err)
+	}
+	output, err := afero.ReadFile(fs, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{"# portfolio", "# keep tags", "# local market", "# starts empty", "# Boliden"} {
+		if !strings.Contains(string(output), comment) {
+			t.Fatalf("comment %q was not preserved:\n%s", comment, output)
+		}
+	}
+}
+
+func TestRemoveFinalSymbolPreservesComments(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+	path := "/ticker/.ticker.yaml"
+	if err := fs.MkdirAll("/ticker", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	input := "# portfolio\nshow-tags: true # keep tags\ngroups:\n  - name: Stockholm # local market\n    watchlist:\n      - BOL.ST # removed with stock\n  - name: USA # keep group\n    watchlist:\n      - AMD # keep stock\n"
+	if err := afero.WriteFile(fs, path, []byte(input), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveSymbolFromConfig(fs, path, "Stockholm", "BOL.ST"); err != nil {
+		t.Fatal(err)
+	}
+	output, err := afero.ReadFile(fs, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{"# portfolio", "# keep tags", "# local market", "# keep group", "# keep stock"} {
+		if !strings.Contains(string(output), comment) {
+			t.Fatalf("comment %q was not preserved:\n%s", comment, output)
+		}
+	}
+	if strings.Contains(string(output), "# removed with stock") {
+		t.Fatalf("deleted stock comment remains:\n%s", output)
+	}
+}

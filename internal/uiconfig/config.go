@@ -2,16 +2,20 @@ package uiconfig
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	"github.com/spf13/afero"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
-const FileName = "ticker-vim.yaml"
+const (
+	FileName      = "ticker-vim.yaml"
+	yamlStringTag = "!!str"
+)
 
 var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`) //nolint:gochecknoglobals
 
@@ -179,23 +183,59 @@ func SaveGroupSort(fs afero.Fs, stockConfigPath string, config Config, groupName
 	}
 	config.Sorting.Groups[groupName] = encodeSort(sort)
 
-	return save(fs, stockConfigPath, config)
+	return save(fs, stockConfigPath, config, func(root *yaml.Node) {
+		sorting := ensureMapping(root, "sorting")
+		groups := ensureMapping(sorting, "groups")
+		setScalar(groups, groupName, encodeSort(sort))
+	})
 }
 
 // SaveFirstLine remembers whether names or symbols are displayed first.
 func SaveFirstLine(fs afero.Fs, stockConfigPath string, config Config, firstLine string) error {
 	config.Display.FirstLine = firstLine
 
-	return save(fs, stockConfigPath, config)
+	return save(fs, stockConfigPath, config, func(root *yaml.Node) {
+		display := ensureMapping(root, "display")
+		setScalar(display, "first-line", firstLine)
+	})
 }
 
-func save(fs afero.Fs, stockConfigPath string, config Config) error {
+func save(fs afero.Fs, stockConfigPath string, config Config, update func(*yaml.Node)) error {
+	path := Path(stockConfigPath)
+	var document yaml.Node
+	data, err := afero.ReadFile(fs, path)
+	switch {
+	case err == nil:
+		if err := yaml.Unmarshal(data, &document); err != nil {
+			return fmt.Errorf("parse UI config %s: %w", path, err)
+		}
+	case os.IsNotExist(err):
+		if err := document.Encode(config); err != nil {
+			return fmt.Errorf("encode initial UI config: %w", err)
+		}
+	default:
+		return fmt.Errorf("read UI config %s: %w", path, err)
+	}
+
+	root := &document
+	if document.Kind == yaml.DocumentNode && len(document.Content) > 0 {
+		root = document.Content[0]
+	}
+	if root.Kind != yaml.MappingNode {
+		return errors.New("UI config must contain a YAML mapping")
+	}
+	update(root)
+
 	var output bytes.Buffer
 	encoder := yaml.NewEncoder(&output)
-	if err := encoder.Encode(config); err != nil {
+	encoder.SetIndent(2)
+	if err := encoder.Encode(&document); err != nil {
 		return fmt.Errorf("encode UI config: %w", err)
 	}
-	path := Path(stockConfigPath)
+	if err := encoder.Close(); err != nil {
+		return fmt.Errorf("finish UI config: %w", err)
+	}
+
 	mode := os.FileMode(0o644)
 	if info, err := fs.Stat(path); err == nil {
 		mode = info.Mode().Perm()
@@ -222,6 +262,48 @@ func save(fs afero.Fs, stockConfigPath string, config Config) error {
 	}
 
 	return nil
+}
+
+func ensureMapping(mapping *yaml.Node, key string) *yaml.Node {
+	if value := mappingValue(mapping, key); value != nil {
+		if value.Kind != yaml.MappingNode {
+			value.Kind = yaml.MappingNode
+			value.Tag = "!!map"
+			value.Value = ""
+			value.Content = nil
+		}
+
+		return value
+	}
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: yamlStringTag, Value: key}
+	valueNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	mapping.Content = append(mapping.Content, keyNode, valueNode)
+
+	return valueNode
+}
+
+func mappingValue(mapping *yaml.Node, key string) *yaml.Node {
+	for index := 0; index+1 < len(mapping.Content); index += 2 {
+		if mapping.Content[index].Value == key {
+			return mapping.Content[index+1]
+		}
+	}
+
+	return nil
+}
+
+func setScalar(mapping *yaml.Node, key string, value string) {
+	if existing := mappingValue(mapping, key); existing != nil {
+		existing.Kind = yaml.ScalarNode
+		existing.Tag = yamlStringTag
+		existing.Value = value
+
+		return
+	}
+	mapping.Content = append(mapping.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: yamlStringTag, Value: key},
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: yamlStringTag, Value: value},
+	)
 }
 
 func encodeSort(sort string) string {

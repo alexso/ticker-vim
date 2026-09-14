@@ -206,6 +206,31 @@ var _ = Describe("Watchlist", func() {
 		})
 	})
 
+	When("the first-line display is toggled while sorting alphabetically", func() {
+		It("re-sorts by the newly displayed first line and keeps the same stock selected", func() {
+			m := NewModel(Config{Styles: stylesFixture, Sort: "alpha", FirstLine: "symbol"})
+			m, _ = m.Update(SetAssetsMsg([]c.Asset{
+				{Symbol: "AAA", Name: "Zebra"},
+				{Symbol: "ZZZ", Name: "Apple"},
+			}))
+
+			before := removeFormatting(m.View())
+			Expect(strings.Index(before, "AAA")).To(BeNumerically("<", strings.Index(before, "ZZZ")))
+
+			m, _ = m.Update(ChangeFirstLineMsg("name"))
+			after := removeFormatting(m.View())
+			Expect(getLine(after, 0)).To(HavePrefix("Apple"))
+			Expect(strings.Index(after, "Apple")).To(BeNumerically("<", strings.Index(after, "Zebra")))
+			selected, ok := m.SelectedAsset()
+			Expect(ok).To(BeTrue())
+			Expect(selected.Symbol).To(Equal("AAA"))
+
+			m, _ = m.Update(ChangeFirstLineMsg("symbol"))
+			after = removeFormatting(m.View())
+			Expect(getLine(after, 0)).To(HavePrefix("AAA"))
+		})
+	})
+
 	When("the selection moves", func() {
 		It("highlights one row and clamps movement to the visible rows", func() {
 			m := NewModel(Config{Styles: stylesFixture, Sort: "user"})

@@ -711,6 +711,7 @@ func (m *Model) toggleFirstLine() (tea.Model, tea.Cmd) {
 	}
 	m.uiConfig.Display.FirstLine = firstLine
 	m.watchlist, _ = m.watchlist.Update(watchlist.ChangeFirstLineMsg(firstLine))
+	m.ensureSelectionVisible()
 	if err := uiconfig.SaveFirstLine(m.fs, m.ctx.ConfigPath, m.uiConfig, firstLine); err != nil && m.ctx.Config.Debug {
 		m.ctx.Logger.Println(err)
 	}

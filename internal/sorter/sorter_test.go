@@ -146,7 +146,7 @@ var _ = Describe("Sorter", func() {
 			})
 		})
 		When("providing \"alpha\" as a sort parameter", func() {
-			It("should sort by alphabetical order", func() {
+			It("should sort by symbol by default", func() {
 				sorter := NewSorter("alpha")
 
 				sortedQuotes := sorter(assets)
@@ -155,6 +155,20 @@ var _ = Describe("Sorter", func() {
 					&googleQuote,
 					&msftQuote,
 					&twQuote,
+				}
+
+				Expect(sortedQuotes).To(Equal(expected))
+			})
+
+			It("should sort by name when the name is displayed first", func() {
+				sorter := NewSorter("alpha", "name")
+				appleQuote := c.Asset{Symbol: "ZZZ", Name: "Apple"}
+				zebraQuote := c.Asset{Symbol: "AAA", Name: "Zebra"}
+
+				sortedQuotes := sorter([]*c.Asset{&zebraQuote, &appleQuote})
+				expected := []*c.Asset{
+					&appleQuote,
+					&zebraQuote,
 				}
 
 				Expect(sortedQuotes).To(Equal(expected))
