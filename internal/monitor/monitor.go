@@ -27,6 +27,9 @@ type Monitor struct {
 	assetGroupVersionVector int
 	assetGroup              c.AssetGroup
 	mu                      sync.RWMutex
+	muAssetGroup            sync.Mutex
+	assetGroupRequest       uint64
+	assetGroupLoaded        bool
 	logger                  *log.Logger
 	ctx                     context.Context
 	cancel                  context.CancelFunc
@@ -140,71 +143,79 @@ func NewMonitor(configMonitor ConfigMonitor) (*Monitor, error) {
 
 // SetAssetGroup sets the asset group for the monitor
 func (m *Monitor) SetAssetGroup(assetGroup c.AssetGroup, versionVector int) error {
-	var wg sync.WaitGroup
+	m.mu.Lock()
+	m.assetGroupRequest++
+	request := m.assetGroupRequest
+	m.mu.Unlock()
 
-	// Create a channel for timeout
-	done := make(chan bool)
-	// Create error channel for collecting errors from each monitor
-	chanError := make(chan error, len(assetGroup.SymbolsBySource))
-	// Create a slice to collect errors
-	var errors []error
-
-	// Concurrently set symbols for each monitor (execute a synchronous call to update quotes for each monitor)
-	for _, symbolBySource := range assetGroup.SymbolsBySource {
-		if monitor, exists := m.monitors[symbolBySource.Source]; exists {
-			wg.Add(1)
-			go func(mon c.Monitor, symbols []string) {
-				defer wg.Done()
-				err := mon.SetSymbols(symbols, versionVector)
-				if err != nil {
-					chanError <- err
-				}
-			}(monitor, symbolBySource.Symbols)
-		}
-	}
-
-	// Wait for the waitgroup to finish in the background
+	// A timeout limits how long the caller waits, not the lifetime of the load.
+	// Publish successful late results so startup can recover without a group change.
+	done := make(chan error, 1)
 	go func() {
+		// Serialize loads so an older request cannot overwrite a newer source cache.
+		m.muAssetGroup.Lock()
+		defer m.muAssetGroup.Unlock()
+
+		m.mu.RLock()
+		current := request == m.assetGroupRequest
+		m.mu.RUnlock()
+		if !current {
+			done <- nil
+
+			return
+		}
+
+		var wg sync.WaitGroup
+		chanError := make(chan error, len(assetGroup.SymbolsBySource))
+		for _, symbolBySource := range assetGroup.SymbolsBySource {
+			if monitor, exists := m.monitors[symbolBySource.Source]; exists {
+				wg.Add(1)
+				go func(mon c.Monitor, symbols []string) {
+					defer wg.Done()
+					if err := mon.SetSymbols(symbols, versionVector); err != nil {
+						chanError <- err
+					}
+				}(monitor, symbolBySource.Symbols)
+			}
+		}
 		wg.Wait()
-		close(done)
+		close(chanError)
+		var loadErrors []error
+		for err := range chanError {
+			loadErrors = append(loadErrors, err)
+		}
+		if len(loadErrors) > 0 {
+			done <- fmt.Errorf("errors setting symbols on monitor(s): %v", loadErrors)
+
+			return
+		}
+
+		m.mu.Lock()
+		if request != m.assetGroupRequest || m.ctx.Err() != nil {
+			m.mu.Unlock()
+			done <- nil
+
+			return
+		}
+		m.assetGroupVersionVector = versionVector
+		m.assetGroup = assetGroup
+		m.assetGroupLoaded = true
+		assetGroupQuote := m.GetAssetGroupQuote()
+		go m.onUpdateAssetGroupQuote(assetGroupQuote, versionVector)
+		m.mu.Unlock()
+		done <- nil
 	}()
 
-	// Continue when the waitgroup is finished or a timeout is reached
-	timeout := time.After(3 * time.Second)
-	for {
-		select {
-		case <-done:
-			// If there are any errors, return them
-			if len(errors) > 0 {
-
-				return fmt.Errorf("errors setting symbols on monitor(s): %v", errors)
-			}
-
-			goto Continue
-		case err := <-chanError:
-			errors = append(errors, err)
-		case <-timeout:
-
-			// If there are any errors, return them along with the timeout error
-			return fmt.Errorf("timeout waiting for monitor(s) to set symbols. Additional non-timeout errors: %v", errors)
-		}
+	timer := time.NewTimer(3 * time.Second)
+	defer timer.Stop()
+	select {
+	case err := <-done:
+		return err
+	case <-timer.C:
+		return errors.New("timeout waiting for monitor(s) to set symbols; loading continues in background")
+	case <-m.ctx.Done():
+		return m.ctx.Err()
 	}
-Continue:
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Update the versionVector so that any messages from the previous asset group can be ignored
-	m.assetGroupVersionVector = versionVector
-	m.assetGroup = assetGroup
-
-	// Get asset quotes for all sources
-	assetGroupQuote := m.GetAssetGroupQuote()
-
-	// Run the callback in a goroutine to avoid blocking
-	go m.onUpdateAssetGroupQuote(assetGroupQuote, versionVector)
-
-	return nil
 }
 
 // SetOnUpdate sets the callback functions for when asset quotes are updated
@@ -288,10 +299,18 @@ func (m *Monitor) handleUpdates() {
 			}
 
 			// Get asset quotes for all sources with new currency rates
+			m.mu.RLock()
+			if !m.assetGroupLoaded {
+				m.mu.RUnlock()
+
+				continue
+			}
 			assetGroupQuote := m.GetAssetGroupQuote()
+			versionVector := m.assetGroupVersionVector
+			m.mu.RUnlock()
 
 			// Callback with new asset quotes which include the new currency rates
-			go m.onUpdateAssetGroupQuote(assetGroupQuote, m.assetGroupVersionVector)
+			go m.onUpdateAssetGroupQuote(assetGroupQuote, versionVector)
 		}
 	}
 }
