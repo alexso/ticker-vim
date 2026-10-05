@@ -1,8 +1,6 @@
 name: test-contract
 
 on: 
-  schedule:
-    - cron:  '0 8 * * *'
   push:
     branches: [ master ]
 jobs:
